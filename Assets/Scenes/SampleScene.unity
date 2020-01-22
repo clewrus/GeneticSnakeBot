@@ -401,8 +401,7 @@ RectTransform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0, y: 0, z: 0}
-  m_Children:
-  - {fileID: 1878758458}
+  m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -421,32 +420,28 @@ GameObject:
   m_Component:
   - component: {fileID: 1878758458}
   - component: {fileID: 1878758459}
+  - component: {fileID: 1878758460}
   m_Layer: 5
-  m_Name: GameObject
+  m_Name: Field
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!224 &1878758458
-RectTransform:
+--- !u!4 &1878758458
+Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1878758457}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
-  m_Father: {fileID: 667706232}
-  m_RootOrder: 0
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 1, y: 0.5}
-  m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -34, y: 0}
-  m_SizeDelta: {x: 700, y: 700}
-  m_Pivot: {x: 1, y: 0.5}
 --- !u!114 &1878758459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -461,4 +456,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tilePrefab: {fileID: 4966070483095562831, guid: 8a79cc7344e684e469f269ad36b45ba9,
     type: 3}
+  m_tileSize: 1
   transparentShader: {fileID: 4800000, guid: 8f8f6e38bcd94e347801a4cf8ff7533f, type: 3}
+--- !u!114 &1878758460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1878758457}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 557e6614e596c1f43ab858bb0bbc87c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  shaders:
+    bodyShader: {fileID: 4800000, guid: 03a67c819aa49c342920dcd567018ec3, type: 3}

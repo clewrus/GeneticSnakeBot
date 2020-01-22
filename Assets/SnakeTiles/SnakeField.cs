@@ -17,10 +17,19 @@ namespace SnakeVisual {
         [SerializeField] private GameObject tilePrefab = null;
 
         private Vector2Int m_fieldSize = default(Vector2Int);
-        [SerializeField] public Vector2Int FieldSize {
+        public Vector2Int FieldSize {
             get => m_fieldSize;
             set {
                 m_fieldSize = value;
+                UpdateFieldSize();
+            }
+        }
+
+        [SerializeField] private float m_tileSize = 1;
+        public float TileSize {
+            get => m_tileSize;
+            set {
+                m_tileSize = value;
                 UpdateFieldSize();
             }
         }
@@ -93,17 +102,12 @@ namespace SnakeVisual {
         }
 
         private void TransformTile (GameObject tile, int i, int j) {
-            var rectTrans = tile.GetComponent<RectTransform>();
+            tile.transform.localScale = TileSize * Vector3.one;
 
-            var sizeDelta = GetComponent<RectTransform>().sizeDelta;
-            var side = Mathf.Min(sizeDelta.x / FieldSize.x, sizeDelta.y / FieldSize.y);
+            var offset = -TileSize * (new Vector2(FieldSize.x / 2f, FieldSize.y / 2f));
+            offset += (TileSize / 2f) * Vector2.one;
 
-            rectTrans.localScale = side * Vector3.one;
-
-            var offset = -side * (new Vector2(FieldSize.x / 2f, FieldSize.y / 2f));
-            offset += (side / 2f) * Vector2.one;
-
-            rectTrans.anchoredPosition = side * (new Vector2(i, j)) + offset;
+            tile.transform.localPosition = TileSize * (new Vector2(i, j)) + offset;
         }
 #endregion
     }

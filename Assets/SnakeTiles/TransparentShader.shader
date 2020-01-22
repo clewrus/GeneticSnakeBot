@@ -2,18 +2,11 @@
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
     }
 
     SubShader
     {
         Tags { "RenderType"="Transparent" }
-        
-
-        GrabPass 
-        {
-            "_Background"
-        }
 
         Pass
         {
@@ -31,7 +24,7 @@
 
             struct v2f
             {
-                float4 grabPos : TEXCOORD0;
+                float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
             };
 
@@ -39,15 +32,14 @@
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.grabPos = ComputeGrabScreenPos(o.vertex);
+                o.uv = v.uv;
                 return o;
             }
 
-            sampler2D _Background;
-
             fixed4 frag (v2f i) : SV_Target
             {
-                return tex2Dproj(_Background, i.grabPos);
+                clip(-1);
+                return 0;
             }
             ENDCG
         }
