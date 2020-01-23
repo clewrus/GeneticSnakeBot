@@ -13,6 +13,9 @@
         [Space]
         _CurvRate("CurvRate", Float) = 2
         _CurvAmplitude("CurvAmplitude", Float) = 0.05
+
+        [Space]
+        _BodyL("TailN of tail at T0, T0, Average shortaning", Vector) = (0.5, 0, 0, 0)
     }
     SubShader
     {
@@ -61,6 +64,17 @@
             float _CurvRate;
             float _CurvAmplitude;
 
+            float4 _BodyL;
+            
+            fixed TailMask (float2 uv) {
+                uv.x -= 0.5;
+                float relY = _TailN + uv.y - _BodyL.x;
+                float2 r = float2(uv.x, relY);
+
+                float mask = lerp((length(r) < 0.5 - _EdgeOffset), 1, 0 < relY);
+                return mask;
+            }
+
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 uv = i.uv;
@@ -71,14 +85,12 @@
                 float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
                 
                 uv.x += _CurvAmplitude * sin(t + _CurvRate*(_TailN + uv.y) + 100*rnd);
-                
-                // for debug purposes
-                // col.rg = uv.rg;
-                // col.b = 0;
 
                 float b = _EdgeBlur;
                 float h = _EdgeOffset;
                 col.a = smoothstep(h, h+b, uv.x) * smoothstep(1 - h, 1 -h-b, uv.x);
+                
+                col.a *= TailMask(uv);
 
                 return col;
             }
