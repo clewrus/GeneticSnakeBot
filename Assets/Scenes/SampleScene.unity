@@ -471,4 +471,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shaders:
-    bodyShader: {fileID: 4800000, guid: 03a67c819aa49c342920dcd567018ec3, type: 3}
+    bodyShader: {fileID: 4800000, guid: 9c78986d6c2e878488f1b3f35bb41f90, type: 3}

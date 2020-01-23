@@ -2,14 +2,17 @@
 {
     Properties
     {
-        [Toggle] _TurnRight("TurnRight", Float) = 0
-
         _SnakeID("SnakeID", Float) = 0
         _TailN("Index from tail", Float) = 0
         _HeadN("Index from head", Float) = 0
 
+        [Space]
         _EdgeBlur("EdgeBlur", Float) = 0.05
         _EdgeOffset("EdgeOffset", Float) = 0.2
+        
+        [Space]
+        _CurvRate("CurvRate", Float) = 2
+        _CurvAmplitude("CurvAmplitude", Float) = 0.05
     }
     SubShader
     {
@@ -55,6 +58,9 @@
             float _EdgeBlur;
             float _EdgeOffset;
 
+            float _CurvRate;
+            float _CurvAmplitude;
+
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 uv = i.uv;
@@ -64,7 +70,7 @@
 
                 float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
                 
-                uv.x += 0.05 * sin(t + 10 * (_TailN + uv.y) + rnd * 100);
+                uv.x += _CurvAmplitude * sin(t + _CurvRate*(_TailN + uv.y) + 100*rnd);
                 
                 // for debug purposes
                 // col.rg = uv.rg;

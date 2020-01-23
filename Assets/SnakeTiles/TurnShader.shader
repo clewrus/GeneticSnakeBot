@@ -4,14 +4,17 @@
     {
         [Toggle] _TurnRight("TurnRight", Float) = 0
 
-        _SnakeID("SnakeID", Float) = 0
+       _SnakeID("SnakeID", Float) = 0
         _TailN("Index from tail", Float) = 0
         _HeadN("Index from head", Float) = 0
 
+        [Space]
         _EdgeBlur("EdgeBlur", Float) = 0.05
         _EdgeOffset("EdgeOffset", Float) = 0.2
-
-        _offset("offset", Float) = 0
+        
+        [Space]
+        _CurvRate("CurvRate", Float) = 2
+        _CurvAmplitude("CurvAmplitude", Float) = 0.05
     }
     SubShader
     {
@@ -57,7 +60,8 @@
             float _EdgeBlur;
             float _EdgeOffset;
 
-            float _offset;
+            float _CurvRate;
+            float _CurvAmplitude;
 
             fixed4 frag (v2f i) : SV_Target
             {
@@ -67,7 +71,7 @@
 
                 float R = length(uv);
                 float Phi = atan(uv.y / uv.x);
-                uv = float2(R, Phi);
+                uv = float2(R, (2/PI) * Phi);
 
                 uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
 
@@ -78,7 +82,7 @@
                 
                 float a = 2 * R;
                 float k = (16*(1-a)*Phi*Phi + 8*PI*(a-1)*Phi + pow(PI, 2)) / pow(PI, 2); 
-                uv.x += 0.05  * sin(t + 10 * (_TailN + uv.y + 0.57) + rnd * 100);
+                uv.x += _CurvAmplitude * k * sin(t + _CurvRate*(_TailN + uv.y) + 100*rnd);
                 
                 // for debug purposes
                 // col.b = 0;
