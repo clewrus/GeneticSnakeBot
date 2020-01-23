@@ -9,7 +9,7 @@
         _HeadN("Index from head", Float) = 0
 
         [Space]
-        _EdgeBlur("EdgeBlur", Float) = 0.05
+        _EdgeBlur("EdgeBlur", Float) = 0.01
         _EdgeOffset("EdgeOffset", Float) = 0.2
         
         [Space]
@@ -63,6 +63,33 @@
             float _CurvRate;
             float _CurvAmplitude;
 
+            float BodyRadius (float rnd, float t, float R, float v) {
+                float Ta = -_CurvAmplitude*_CurvRate * cos(t + _CurvRate*(_TailN+1) + 100*rnd);
+                float Tb = -_CurvAmplitude*_CurvRate * cos(t + _CurvRate*(_TailN) + 100*rnd);
+                
+                float arcTa = pow(atan(Ta), 2);
+                float arcTb = pow(atan(Tb), 2);
+
+                // lerp is empiric solution
+                Ta = sign(Ta) * (lerp(1, 2, R) / PI) * sqrt(arcTa / (1 + arcTa));
+                Tb = sign(Tb) * (lerp(1, 2, R) / PI) * sqrt(arcTb / (1 + arcTb));
+                
+                float commonParam = t + _CurvRate*_TailN + 100*rnd;
+                float a = -_CurvAmplitude * sin(commonParam + _CurvRate);
+                float b = -_CurvAmplitude * sin(commonParam);
+
+                a += 1 - _EdgeOffset;
+                b += 1 - _EdgeOffset;
+
+                float A = 2*(b - a) + (Ta + Tb);
+                float B = 3*(a - b) - 2*Tb - Ta;
+                float C = Tb;
+                float D = b;
+
+                float U = ((A*v + B)*v + C)*v + D;
+                return U;
+            }
+
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 uv = i.uv;
@@ -80,16 +107,10 @@
 
                 float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
                 
-                float a = 2 * R;
-                float k = (16*(1-a)*Phi*Phi + 8*PI*(a-1)*Phi + pow(PI, 2)) / pow(PI, 2); 
-                uv.x += _CurvAmplitude * k * sin(t + _CurvRate*(_TailN + uv.y) + 100*rnd);
+                float U = BodyRadius(rnd, t, R, uv.y);
+                float Ul = U - (1 - 2*_EdgeOffset);
                 
-                // for debug purposes
-                // col.b = 0;
-
-                float b = _EdgeBlur;
-                float h = _EdgeOffset;
-                col.a = smoothstep(h, h+b, uv.x) * smoothstep(1 - h, 1 -h-b, uv.x);
+                col.a = smoothstep(Ul, Ul + _EdgeBlur, uv.x) * smoothstep(U, U - _EdgeBlur, uv.x);
 
                 return col;
             }

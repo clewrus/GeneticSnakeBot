@@ -7,7 +7,7 @@
         _HeadN("Index from head", Float) = 0
 
         [Space]
-        _EdgeBlur("EdgeBlur", Float) = 0.05
+        _EdgeBlur("EdgeBlur", Float) = 0.01
         _EdgeOffset("EdgeOffset", Float) = 0.2
         
         [Space]

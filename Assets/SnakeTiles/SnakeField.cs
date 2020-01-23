@@ -9,6 +9,7 @@ namespace SnakeVisual {
 
         Material GetTileMaterial (Vector2Int pos);
         void SetTileMaterial (Vector2Int pos, Material mat);
+        void SetTileRotation (Vector2Int pos, float angle);
     }
 
     public class SnakeField : MonoBehaviour, ISnakeField {
@@ -45,6 +46,7 @@ namespace SnakeVisual {
             foreach (var tileObj in instancedTiles) {
                 if (tileObj == null || tileObj.GetComponent<MeshRenderer>() == null) continue;
                 tileObj.GetComponent<MeshRenderer>().material = new Material(transparentShader);
+                tileObj.transform.eulerAngles = Vector3.zero;
             }
         }
 
@@ -70,6 +72,13 @@ namespace SnakeVisual {
 
             renderer.material = mat;
         }
+
+        public void SetTileRotation (Vector2Int pos, float angle) {
+			if (!ContainsIndex(pos)) return;
+            if (instancedTiles[pos.x, pos.y] == null) return;
+
+            instancedTiles[pos.x, pos.y].transform.eulerAngles = angle * Vector3.forward;
+		}
 #endregion
 
 #region Private
@@ -109,6 +118,6 @@ namespace SnakeVisual {
 
             tile.transform.localPosition = TileSize * (new Vector2(i, j)) + offset;
         }
-#endregion
-    }
+		#endregion
+	}
 }
