@@ -28,9 +28,19 @@ namespace SnakeVisual {
             var m3 = new Material(shaders.bodyShader);
             field.SetTileMaterial(new Vector2Int(15, 14), m3);
 
+            var m4 = new Material(shaders.headShader);
+            field.SetTileMaterial(new Vector2Int(13, 15), m4);
+            field.SetTileRotation(new Vector2Int(13, 15), 90);
+
             m1.SetFloat("_TailN", 1);
             m2.SetFloat("_TailN", 2);
             m3.SetFloat("_TailN", 0);
+            m4.SetFloat("_TailN", 3);
+
+            m1.SetFloat("_HeadN", 2);
+            m2.SetFloat("_HeadN", 1);
+            m3.SetFloat("_HeadN", 3);
+            m4.SetFloat("_HeadN", 0);
         }
 
         public void Update () {

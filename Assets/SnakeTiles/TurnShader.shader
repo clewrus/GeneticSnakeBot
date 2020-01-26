@@ -15,6 +15,9 @@
         [Space]
         _CurvRate("CurvRate", Float) = 2
         _CurvAmplitude("CurvAmplitude", Float) = 0.05
+
+        [Space]
+        _BodyL("TailN of tail at T0, T0, Average shortaning", Vector) = (0.5, 0, 0, 0)
     }
     SubShader
     {
@@ -63,24 +66,23 @@
             float _CurvRate;
             float _CurvAmplitude;
 
-            float BodyRadius (float rnd, float t, float R, float v) {
+            float4 _BodyL;
+
+            float BodyRadius (float rnd, float t, float v) {
                 float Ta = -_CurvAmplitude*_CurvRate * cos(t + _CurvRate*(_TailN+1) + 100*rnd);
                 float Tb = -_CurvAmplitude*_CurvRate * cos(t + _CurvRate*(_TailN) + 100*rnd);
-                
-                float arcTa = pow(atan(Ta), 2);
-                float arcTb = pow(atan(Tb), 2);
 
-                // lerp is empiric solution
-                Ta = sign(Ta) * (lerp(1, 2, R) / PI) * sqrt(arcTa / (1 + arcTa));
-                Tb = sign(Tb) * (lerp(1, 2, R) / PI) * sqrt(arcTb / (1 + arcTb));
-                
                 float commonParam = t + _CurvRate*_TailN + 100*rnd;
-                float a = -_CurvAmplitude * sin(commonParam + _CurvRate);
-                float b = -_CurvAmplitude * sin(commonParam);
 
-                a += 1 - _EdgeOffset;
-                b += 1 - _EdgeOffset;
+                float deltaA = - _CurvAmplitude * sin(commonParam + _CurvRate);
 
+                Ta *= (_HeadN != 1);
+                float a = 1 - _EdgeOffset + (_HeadN != 1) * deltaA;
+                float b = 1 - _EdgeOffset - _CurvAmplitude * sin(commonParam);
+
+                Ta = (2 / PI) * Ta / a;
+                Tb = (2 / PI) * Tb / b;
+ 
                 float A = 2*(b - a) + (Ta + Tb);
                 float B = 3*(a - b) - 2*Tb - Ta;
                 float C = Tb;
@@ -107,9 +109,9 @@
 
                 float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
                 
-                float U = BodyRadius(rnd, t, R, uv.y);
+                float U = BodyRadius(rnd, t, uv.y);
                 float Ul = U - (1 - 2*_EdgeOffset);
-                
+
                 col.a = smoothstep(Ul, Ul + _EdgeBlur, uv.x) * smoothstep(U, U - _EdgeBlur, uv.x);
 
                 return col;

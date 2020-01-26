@@ -84,7 +84,9 @@
 
                 float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
                 
-                uv.x += _CurvAmplitude * sin(t + _CurvRate*(_TailN + uv.y) + 100*rnd);
+                float headNextK = (float)(_HeadN == 1);
+                float deltaX = _CurvAmplitude * sin(t + _CurvRate*(_TailN + uv.y) + 100*rnd);
+                uv.x += deltaX * (1 - uv.y * headNextK);
 
                 float b = _EdgeBlur;
                 float h = _EdgeOffset;
