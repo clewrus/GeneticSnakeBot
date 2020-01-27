@@ -27,8 +27,10 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+        
 
             #include "UnityCG.cginc"
+            #include "VoronoiNoise.cginc"
 
             struct appdata
             {
@@ -75,13 +77,13 @@
                 return mask;
             }
 
+
+
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 uv = i.uv;
-
                 float t = 2 * PI * frac(4 * _Time.x);
-                fixed4 col = fixed4(0.5*sin(5*t) + 0.5, 0.5*sin(1-t) + 0.5, sin(t), 1);
-
+ 
                 float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
                 
                 float headNextK = (float)(_HeadN == 1);
@@ -90,6 +92,8 @@
 
                 float b = _EdgeBlur;
                 float h = _EdgeOffset;
+
+                fixed4 col = VoronoiNoise(uv + float2(0, _TailN), 10, 228);
                 col.a = smoothstep(h, h+b, uv.x) * smoothstep(1 - h, 1 -h-b, uv.x);
                 
                 col.a *= TailMask(uv);

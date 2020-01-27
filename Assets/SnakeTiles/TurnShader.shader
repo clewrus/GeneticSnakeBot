@@ -31,6 +31,7 @@
             #pragma fragment frag
 
             #include "UnityCG.cginc"
+            #include "VoronoiNoise.cginc"
 
             struct appdata
             {
@@ -100,18 +101,19 @@
 
                 float R = length(uv);
                 float Phi = atan(uv.y / uv.x);
+
                 uv = float2(R, (2/PI) * Phi);
 
                 uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
 
                 float t = 2 * PI * frac(4 * _Time.x);
-                fixed4 col = fixed4(0.5*sin(5*t) + 0.5, 0.5*sin(1-t) + 0.5, sin(t), 1);
-
                 float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
                 
-                float U = BodyRadius(rnd, t, uv.y);
-                float Ul = U - (1 - 2*_EdgeOffset);
-
+                uv.x -= BodyRadius(rnd, t, uv.y)  - (1 - _EdgeOffset);
+                float U = 1 - _EdgeOffset;
+                float Ul = _EdgeOffset;
+                
+                fixed4 col = VoronoiNoise(uv + float2(0, _TailN), 10, 228);
                 col.a = smoothstep(Ul, Ul + _EdgeBlur, uv.x) * smoothstep(U, U - _EdgeBlur, uv.x);
 
                 return col;
