@@ -98,12 +98,7 @@
                 float2 uv = i.uv;
                 
                 uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
-
-                float R = length(uv);
-                float Phi = atan(uv.y / uv.x);
-
-                uv = float2(R, (2/PI) * Phi);
-
+                uv = float2(length(uv), (2/PI) * atan(uv.y / uv.x));
                 uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
 
                 float t = 2 * PI * frac(4 * _Time.x);
@@ -113,7 +108,12 @@
                 float U = 1 - _EdgeOffset;
                 float Ul = _EdgeOffset;
                 
-                fixed4 col = VoronoiNoise(uv + float2(0, _TailN), 10, 228);
+                float R = 0.5 - _EdgeOffset;
+                float2 noiseCords = float2(R * asin(clamp((uv.x-0.5)/R, -1, 1)), uv.y + _TailN);
+                float3 noise = VoronoiNoise(noiseCords, 10, 228);
+
+                fixed4 col = fixed4(noise, 0);
+
                 col.a = smoothstep(Ul, Ul + _EdgeBlur, uv.x) * smoothstep(U, U - _EdgeBlur, uv.x);
 
                 return col;

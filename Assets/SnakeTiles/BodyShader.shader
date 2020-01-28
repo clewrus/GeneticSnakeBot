@@ -76,9 +76,7 @@
                 float mask = lerp((length(r) < 0.5 - _EdgeOffset), 1, 0 < relY);
                 return mask;
             }
-
-
-
+            
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 uv = i.uv;
@@ -93,7 +91,12 @@
                 float b = _EdgeBlur;
                 float h = _EdgeOffset;
 
-                fixed4 col = VoronoiNoise(uv + float2(0, _TailN), 10, 228);
+                float R = 0.5 - _EdgeOffset;
+                float2 noiseCords = float2(R * asin(clamp((uv.x-0.5)/R, -1, 1)), uv.y + _TailN);
+                float3 noise = VoronoiNoise(noiseCords, 10, 228);
+
+                fixed4 col = fixed4(noise, 0);
+
                 col.a = smoothstep(h, h+b, uv.x) * smoothstep(1 - h, 1 -h-b, uv.x);
                 
                 col.a *= TailMask(uv);
