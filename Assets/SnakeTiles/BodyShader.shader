@@ -27,7 +27,6 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-        
 
             #include "UnityCG.cginc"
             #include "VoronoiNoise.cginc"
@@ -51,8 +50,6 @@
                 o.uv = v.uv;
                 return o;
             }
-            
-            #define PI 3.141592
 
             float _TurnRight;
             float _SnakeID;
@@ -67,6 +64,8 @@
             float _CurvAmplitude;
 
             float4 _BodyL;
+
+            #include "SnakeCommon.cginc"
             
             fixed TailMask (float2 uv) {
                 uv.x -= 0.5;
@@ -76,29 +75,19 @@
                 float mask = lerp((length(r) < 0.5 - _EdgeOffset), 1, 0 < relY);
                 return mask;
             }
-            
+
             fixed4 frag (v2f i) : SV_Target
             {
                 float2 uv = i.uv;
-                float t = 2 * PI * frac(4 * _Time.x);
- 
-                float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
-                
-                float headNextK = (float)(_HeadN == 1);
-                float deltaX = _CurvAmplitude * sin(t + _CurvRate*(_TailN + uv.y) + 100*rnd);
-                uv.x += deltaX * (1 - uv.y * headNextK);
 
-                float b = _EdgeBlur;
-                float h = _EdgeOffset;
+                float rnd = RandFromId(_SnakeID);                
+                float deltaX = _CurvAmplitude * sin( SnakePhase(rnd, _CurvRate, _TailN + uv.y) );
 
-                float R = 0.5 - _EdgeOffset;
-                float2 noiseCords = float2(R * asin(clamp((uv.x-0.5)/R, -1, 1)), uv.y + _TailN);
-                float3 noise = VoronoiNoise(noiseCords, 10, 228);
+                uv.x += deltaX * pow(lerp(1, 1 - uv.y, _HeadN == 1), 0.5);
 
-                fixed4 col = fixed4(noise, 0);
-
-                col.a = smoothstep(h, h+b, uv.x) * smoothstep(1 - h, 1 -h-b, uv.x);
-                
+                fixed4 col;
+                col.rgb = SquamaTexture(uv + float2(-0.5, _TailN), 0.5 - _EdgeOffset);
+                col.a = MakeRect(uv.x, _EdgeOffset, 1 - _EdgeOffset, _EdgeBlur);
                 col.a *= TailMask(uv);
 
                 return col;

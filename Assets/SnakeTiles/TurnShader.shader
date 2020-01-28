@@ -52,8 +52,6 @@
                 o.uv = v.uv;
                 return o;
             }
-            
-            #define PI 3.141592
 
             float _TurnRight;
             float _SnakeID;
@@ -69,17 +67,31 @@
 
             float4 _BodyL;
 
-            float BodyRadius (float rnd, float t, float v) {
-                float Ta = -_CurvAmplitude*_CurvRate * cos(t + _CurvRate*(_TailN+1) + 100*rnd);
-                float Tb = -_CurvAmplitude*_CurvRate * cos(t + _CurvRate*(_TailN) + 100*rnd);
+            #include "SnakeCommon.cginc"
 
-                float commonParam = t + _CurvRate*_TailN + 100*rnd;
+            inline float2 TurnTransform (float2 uv) {
+                uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
 
-                float deltaA = - _CurvAmplitude * sin(commonParam + _CurvRate);
+                uv = float2(length(uv), (2/PI) * atan(uv.y / uv.x));
+
+                uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
+                return uv;
+            } 
+
+            float BodyRadius (float v) {
+                float rnd = RandFromId(_SnakeID);
+
+                float aPhase = SnakePhase(rnd, _CurvRate, _TailN + 1);
+                float bPhase = SnakePhase(rnd, _CurvRate, _TailN);
+
+                float Ta = -_CurvAmplitude*_CurvRate * cos(aPhase);
+                float Tb = -_CurvAmplitude*_CurvRate * cos(bPhase);
+
+                float deltaA = - _CurvAmplitude * sin(aPhase);
 
                 Ta *= (_HeadN != 1);
                 float a = 1 - _EdgeOffset + (_HeadN != 1) * deltaA;
-                float b = 1 - _EdgeOffset - _CurvAmplitude * sin(commonParam);
+                float b = 1 - _EdgeOffset - _CurvAmplitude * sin(bPhase);
 
                 Ta = (2 / PI) * Ta / a;
                 Tb = (2 / PI) * Tb / b;
@@ -95,26 +107,14 @@
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float2 uv = i.uv;
-                
-                uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
-                uv = float2(length(uv), (2/PI) * atan(uv.y / uv.x));
-                uv.x = (1 - _TurnRight)*uv.x + _TurnRight*(1 - uv.x);
+                float2 uv = TurnTransform(i.uv);
 
                 float t = 2 * PI * frac(4 * _Time.x);
-                float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
-                
-                uv.x -= BodyRadius(rnd, t, uv.y)  - (1 - _EdgeOffset);
-                float U = 1 - _EdgeOffset;
-                float Ul = _EdgeOffset;
-                
-                float R = 0.5 - _EdgeOffset;
-                float2 noiseCords = float2(R * asin(clamp((uv.x-0.5)/R, -1, 1)), uv.y + _TailN);
-                float3 noise = VoronoiNoise(noiseCords, 10, 228);
+                uv.x -= BodyRadius(uv.y)  - (1 - _EdgeOffset);
 
-                fixed4 col = fixed4(noise, 0);
-
-                col.a = smoothstep(Ul, Ul + _EdgeBlur, uv.x) * smoothstep(U, U - _EdgeBlur, uv.x);
+                fixed4 col = 0;
+                col.rgb = SquamaTexture(uv + float2(-0.5, _TailN), 0.5 - _EdgeOffset);
+                col.a = MakeRect(uv.x, _EdgeOffset, 1 - _EdgeOffset, _EdgeBlur);
 
                 return col;
             }
