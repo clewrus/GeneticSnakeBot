@@ -53,7 +53,7 @@
                 return o;
             }
             
-            #define PI 3.141592
+            #include "SnakeCommon.cginc"
 
             float _TurnRight;
             float _SnakeID;
@@ -84,7 +84,7 @@
                 float w = _HeadConfig.w;
                 float d = _HeadConfig.z - _HeadConfig.x;
 
-                float kPrime = -(1 - _EdgeOffset - _HeadConfig.z) * ((3.1416/2) / w);
+                float kPrime = -(1 - _EdgeOffset - _HeadConfig.z) * ((PI/2) / w);
                 float k =  1 / kPrime;
 
                 float D = _HeadConfig.y;
@@ -101,56 +101,93 @@
             }
 
             float f3 (float u) {
-                float w = _HeadConfig.w;
                 float A = 1 - _EdgeOffset - _HeadConfig.z;
                 
-                return A * cos((3.1416/2) * u/w);
+                return A * cos((PI/2) * u/_HeadConfig.w);
             }
 
-            float SnakeHeadMask (float2 uv) {
-                float a = 0.5 - _EdgeOffset;
+            float f3Op (float v) {
+                float A = 1 - _EdgeOffset - _HeadConfig.z;
+                return (2 / PI) * _HeadConfig.w * acos(clamp(-1, 1, v / A));
+            }
+
+            fixed4 SnakeHeadMask (float2 iuv) {
+                float2 uv = float2(abs(iuv.x), iuv.y);
 
                 float h = _HeadConfig.x;
                 float p = _HeadConfig.z;
                 float w = _HeadConfig.w;
 
-                float mask = 0;
-                mask += (uv.y < h) * (uv.x < f1(uv.y, a));
+                fixed4 col = fixed4(1, 1, 1, 0);
+                float bodyR = 0;
+
+                if (uv.y < h) {
+                    float f1Val = f1(uv.y, 0.5-_EdgeOffset);
+                    col.a = S(0, _EdgeBlur, f1Val - uv.x);
+
+                    bodyR = f1Val;
+                }                
 
                 uv.y -= h;
-                mask += (0 < uv.y && uv.y < p-h) * (uv.x < f2(uv.y));
+                if (0 < uv.y && uv.y < p-h) {
+                    float f2Val = f2(uv.y);
+                    col.a = S(0, _EdgeBlur, f2Val - uv.x);
+
+                    bodyR = f2Val;
+                }
 
                 uv.y -= p - h;
-                mask += (0 < uv.y && uv.x < w) * (uv.y < f3(uv.x));
+                if (0 < uv.y && uv.x < w) {
+                    float f3Val = f3(uv.x);
+                    col.a = S(0, _EdgeBlur, f3Val - uv.y);
 
-                return mask;
+                    bodyR = f3Op(uv.y);
+                }
+                
+                col.rgb = SquamaTexture(iuv + float2(0, _TailN), bodyR);
+                return col;
+            }
+
+            fixed4 SnakeEye (float2 uv) {
+                uv.x += (uv.x < 0) * 2*(_HeadConfig.w * 1.1);
+                uv -= float2(_HeadConfig.w * 1.1, _HeadConfig.z * 0.8);
+
+                float R = length(uv);
+
+                float eyeSize = 0.09;
+                fixed4 eye = 1;
+
+                float ballSize = 0.05;
+
+                float A = (eyeSize - ballSize - 0.01) * sin(RandFromId(_SnakeID) + _Time.y);
+                float phi = 2 * PI * frac(_Time.y);
+
+                float2 ballPos = A * float2(cos(phi), sin(phi));
+                eye.rgb = S(ballSize, ballSize + _EdgeBlur, length(uv - ballPos));
+
+                eye.a = S(eyeSize + _EdgeBlur, eyeSize, R);
+
+                return eye;
             }
 
             fixed4 SnakeHead (float2 uv) {
-                fixed4 col = 0;
+                fixed4 col = 1;
 
-                float mask = SnakeHeadMask(uv);
+                col = SnakeHeadMask(uv);
+                
 
-                float2 eyeC = float2(_HeadConfig.w * 1.1, _HeadConfig.z * 0.8);
-                float r = length(uv - eyeC);
-
-                float4 eye = float4(sin(100*r + _Time.y), sin(100*r + 5*_Time.y), 0.5, 1);
-                col = lerp(mask, eye, smoothstep(0.089, 0.088, r));
+                fixed4 eye = SnakeEye(uv);
+                col = lerp(col, eye, eye.a);
 
                 return col;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                float2 uv = i.uv;
+                float2 uv = i.uv;                
+                uv.x = uv.x - 0.5;
 
-                float t = 2 * PI * frac(4 * _Time.x);
-                fixed4 col = fixed4(0.5*sin(5*t) + 0.5, 0.5*sin(1-t) + 0.5, sin(t), 1);
-
-                float rnd = frac(_SnakeID * 153.234 + 99.43 * frac(0.123 * _SnakeID));
-                
-                uv.x = abs(uv.x - 0.5);
-                col = SnakeHead(uv);
+                fixed4 col = SnakeHead(uv);
 
                 return col;
             }
