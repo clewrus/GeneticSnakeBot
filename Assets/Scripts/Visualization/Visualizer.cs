@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SnakeVisual {
-    public class SnakeVisualizer : MonoBehaviour {
+namespace Visualization {
+    public class Visualizer : MonoBehaviour, ISimulationObserver {
         private ISnakeField field;
 
         public SnakeShaders shaders;
@@ -12,7 +12,19 @@ namespace SnakeVisual {
             field = GetComponent<SnakeField>();
         }
 
+        public void SimulationUpdateHandler (HashSet<int> entitiesIds) {
+            
+        }
+
         public void Start () {
+            
+        }
+
+        public void Update () {
+            
+        }
+
+        private void DrawSnakeSample () {
             field.FieldSize = new Vector2Int(20, 30);
             field.ClearTilesMaterials();
 
@@ -42,10 +54,6 @@ namespace SnakeVisual {
             m3.SetFloat("_HeadN", 3);
             m4.SetFloat("_HeadN", 0);
         }
-
-        public void Update () {
-            
-        }
     }
 
     [System.Serializable]
@@ -53,5 +61,7 @@ namespace SnakeVisual {
         public Shader bodyShader;
         public Shader turnShader;
         public Shader headShader;
+
+        public Shader foodShader;
     }
 }

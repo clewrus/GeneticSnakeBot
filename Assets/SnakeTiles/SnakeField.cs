@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 
 
-namespace SnakeVisual {
+namespace Visualization {
+    
     public interface ISnakeField {
         Vector2Int FieldSize {get; set;}
 

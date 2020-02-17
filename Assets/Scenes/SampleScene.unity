@@ -467,10 +467,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 1878758457}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 557e6614e596c1f43ab858bb0bbc87c3, type: 3}
+  m_Script: {fileID: 11500000, guid: 02c2f948d3f487f46b88a37d2768ee2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   shaders:
     bodyShader: {fileID: 4800000, guid: 03a67c819aa49c342920dcd567018ec3, type: 3}
     turnShader: {fileID: 4800000, guid: 9c78986d6c2e878488f1b3f35bb41f90, type: 3}
     headShader: {fileID: 4800000, guid: 29a7cb8d054fd2742a82fad47a994877, type: 3}
+    foodShader: {fileID: 0}
