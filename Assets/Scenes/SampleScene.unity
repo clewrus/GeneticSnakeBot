@@ -195,7 +195,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 504720670}
-  - component: {fileID: 504720669}
   m_Layer: 0
   m_Name: Simulation
   m_TagString: Untagged
@@ -203,18 +202,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &504720669
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 504720668}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7277475f2317a541b36145fc5a9270f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!4 &504720670
 Transform:
   m_ObjectHideFlags: 0

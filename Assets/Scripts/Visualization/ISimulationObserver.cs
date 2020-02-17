@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 namespace Visualization {
-	interface ISimulationObserver {
+	public interface ISimulationObserver {
 		void SimulationUpdateHandler(HashSet<int> entitiesIds);
 	}
 }
