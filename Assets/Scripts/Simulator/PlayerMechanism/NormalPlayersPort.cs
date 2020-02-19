@@ -40,8 +40,16 @@ namespace Simulator {
 			throw new NotImplementedException();
 		}
 
-		public List<MoveInfo> MakeMove () {
+		public List<MoveInfo> MakeMove (FieldProjector projector) {
 			throw new System.NotImplementedException();
+		}
+
+		public SnakeInfo GetSnakeInfo (int id) {
+			if (idToPlayer.TryGetValue(id, out IPlayer tarPlayer)) {
+                return tarPlayer.GetSnakeInfo();
+            }
+
+            return null;
 		}
 	}
 }

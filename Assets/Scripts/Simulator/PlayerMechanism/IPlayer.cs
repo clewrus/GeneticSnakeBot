@@ -5,5 +5,7 @@ namespace Simulator {
     public interface IPlayer {
         MoveInfo MakeMove (Projection playerInput);
         void HandleMoveResult (MoveResult result);
+
+        SnakeInfo GetSnakeInfo ();
     }
 }
