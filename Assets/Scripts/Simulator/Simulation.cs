@@ -124,8 +124,11 @@ namespace Simulator {
                 var nwPos = new Vector2Int(rand.Next(0, width), rand.Next(0, height));
                 if (field[nwPos.x, nwPos.y].type != FieldItem.ItemType.None) continue;
 
+                int nwId = GetNextId();
+                updatedEntities.Add(nwId);
+
                 field[nwPos.x, nwPos.y] = new FieldItem {
-                    id = GetNextId(),
+                    id = nwId,
                     frameOfLastUpdate = curFrame,
                     prevNeighborPos = -1,
                     value = SPAWNED_FOOD_VALUE,
