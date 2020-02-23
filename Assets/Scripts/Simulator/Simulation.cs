@@ -14,6 +14,7 @@ namespace Simulator {
         private Dictionary<int, SnakeInfo> idToSnakeInfo;
 
         private Dictionary<int, int> idToCurLength;
+        private Dictionary<int, IPlayersPort> idToPort;
         private Dictionary<int, float> idToValue;
 
         private int curFrame = 0;
@@ -56,6 +57,7 @@ namespace Simulator {
             idToSnakeInfo = new Dictionary<int, SnakeInfo>();
 
             idToCurLength = new Dictionary<int, int>();
+            idToPort = new Dictionary<int, IPlayersPort>();
             idToValue = new Dictionary<int, float>();
         }
 
@@ -96,11 +98,28 @@ namespace Simulator {
         }
 
         private void SendStepResultsToPorts () {
+            var results = new Dictionary<IPlayersPort, List<MoveResult>> ();
+            foreach (var id_port in idToPort) {
+                if (!results.ContainsKey(id_port.Value)) {
+                    results.Add(id_port.Value, new List<MoveResult>(32));
+                }
 
+                results[id_port.Value].Add(new MoveResult {
+                    id = id_port.Key,
+                    value = idToValue[id_port.Key],
+                    flag =  ((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive),
+                });
+            }
+
+            foreach (var port_result in results) {
+                port_result.Key.HandleMoveResult(port_result.Value);
+            }
         }
 
         private void UpdateObservers () {
-
+            foreach (var observer in observers) {
+                observer.SimulationUpdateHandler(updatedEntities);
+            }
         }
 
         private void MakeSimulationStep () {
@@ -155,6 +174,7 @@ namespace Simulator {
             Vector2Int oldHeadPos;
             if (!idToFieldPos.TryGetValue(id, out oldHeadPos)) {
                 oldHeadPos = AddNewSnake(id);
+                idToPort.Add(id, FindSnakePort(id));
             }
 
             idToValue[id] -= moveInfo.valueUsed;
@@ -341,15 +361,8 @@ namespace Simulator {
 #region Snake creation
 
         private Vector2Int AddNewSnake (int id) {
-            SnakeInfo info = null;
-            foreach (var port in playersPorts) {
-                info = port.GetSnakeInfo(id);
-                if (info != null) {
-                    idToSnakeInfo.Add(id, info);
-                    break;
-                }
-            }
-
+            SnakeInfo info = FindSnakePort(id).GetSnakeInfo(id);
+            
             idToCurLength.Add(id, info.maxLength);
             idToValue.Add(id, info.maxValue);
             Vector2Int pos = AddNewSnakeToField(id, info.maxLength);
@@ -428,6 +441,16 @@ namespace Simulator {
         }
 
 #endregion
+
+        private IPlayersPort FindSnakePort (int id) {
+            foreach (var port in playersPorts) {
+                if (port.GetSnakeInfo(id) != null) {
+                    return port;
+                }
+            }
+            
+            return null;
+        }
 
         public int GetNextId () {
             return nextEntityId++;
