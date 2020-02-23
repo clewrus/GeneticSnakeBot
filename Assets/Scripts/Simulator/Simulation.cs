@@ -18,15 +18,19 @@ namespace Simulator {
 
         private int curFrame = 0;
 
-
         private readonly int width;
         private readonly int height;
         private readonly FieldItem[,] field;
 
+        private System.Random rand;
         private int nextEntityId = 0;
 
 #region Constants
         private readonly int SPAWN_BORDER = 3;
+
+        private readonly float SPAWNED_FOOD_VALUE = 1;
+        private readonly float FOOD_SPAWN_RATE = 0.1f;
+        private readonly float HALF_FOOD_FRAME = 30;
 #endregion
 
 #region Buffers
@@ -40,6 +44,7 @@ namespace Simulator {
         public Simulation (int width, int height) {
             observers = new List<ISimulationObserver>();
             field = new FieldItem[width, height];
+            rand = new System.Random();
 
             this.width = width;
             this.height = height;
@@ -107,7 +112,41 @@ namespace Simulator {
                 UpdateSnake(move.Key, move.Value);
             }
 
+            ScatterFood();
         }
+
+#region Food scattering
+
+        private void ScatterFood () {
+            int nwPiecesAmount = FoodPiecesAmount(rand, curFrame, new Vector2Int(width, height));
+
+            for (int i = 0; i < nwPiecesAmount; i++) {
+                var nwPos = new Vector2Int(rand.Next(0, width), rand.Next(0, height));
+                if (field[nwPos.x, nwPos.y].type != FieldItem.ItemType.None) continue;
+
+                field[nwPos.x, nwPos.y] = new FieldItem {
+                    id = GetNextId(),
+                    frameOfLastUpdate = curFrame,
+                    prevNeighborPos = -1,
+                    value = SPAWNED_FOOD_VALUE,
+
+                    type = FieldItem.ItemType.Food,
+                };
+            }
+        }
+
+        public int FoodPiecesAmount (System.Random rand, int frame, Vector2Int fieldSize) {
+            float x = (float)frame / HALF_FOOD_FRAME;
+
+            float maxPiecesPerCell = FOOD_SPAWN_RATE / (1 + x);
+            float piecesPerCell = (float)(maxPiecesPerCell * rand.NextDouble());
+
+            return (int)(piecesPerCell * fieldSize.x * fieldSize.y);
+        }
+
+#endregion
+
+#region Snake position update
 
         private void UpdateSnake (int id, MoveInfo moveInfo) {
             Vector2Int oldHeadPos;
@@ -294,6 +333,10 @@ namespace Simulator {
             }
         }
 
+#endregion
+
+#region Snake creation
+
         private Vector2Int AddNewSnake (int id) {
             SnakeInfo info = null;
             foreach (var port in playersPorts) {
@@ -380,6 +423,8 @@ namespace Simulator {
 
             return MoveInfo.Direction.None;
         }
+
+#endregion
 
         public int GetNextId () {
             return nextEntityId++;
