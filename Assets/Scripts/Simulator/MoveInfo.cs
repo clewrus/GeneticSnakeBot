@@ -2,11 +2,11 @@
 
 namespace Simulator {
 	public struct MoveInfo {
-		public enum Direction {None, Forward, Right, Stop, Left};
+		public enum Direction {None, Up, Right, Down, Left};
 
 		public int id;
 		public float valueUsed;
-		
+
 		public Direction dir;
 		public SnakeInfo snakeInfo;
 
