@@ -27,7 +27,7 @@ namespace Simulator {
         private int nextEntityId = 0;
 
 #region Constants
-        private readonly int SPAWN_BORDER = 3;
+        private readonly int SPAWN_BORDER = 1;
 
         private readonly float SPAWNED_FOOD_VALUE = 1;
         private readonly float FOOD_SPAWN_RATE = 0.1f;
@@ -104,9 +104,14 @@ namespace Simulator {
                     results.Add(id_port.Value, new List<MoveResult>(32));
                 }
 
+                var headPos = idToFieldPos[id_port.Key];
+                var headDir = field[headPos.x, headPos.y].dir;
+
                 results[id_port.Value].Add(new MoveResult {
                     id = id_port.Key,
                     value = idToValue[id_port.Key],
+                    headPos = headPos,
+                    headDir = headDir,
                     flag =  ((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive),
                 });
             }
@@ -177,23 +182,22 @@ namespace Simulator {
                 idToPort.Add(id, FindSnakePort(id));
             }
 
-            idToValue[id] -= moveInfo.valueUsed;
-            if (idToValue[id] < 0) {
-                removedEntities.Add(id);
-                RemoveEntityTail(idToFieldPos[id]);
-                return;
-            }
+            if (!ManageValueCost(id, moveInfo.valueUsed)) return;            
 
             var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
             var selectedDir = (moveInfo.dir==MoveInfo.Direction.None)? oldHeadItem.dir: moveInfo.dir;
             bool skipMove = (selectedDir == OppositDirection(oldHeadItem.dir));
 
             var newHeadPos = CalcNewHeadPos(oldHeadPos, selectedDir);
-            FieldItem hittedItem = field[newHeadPos.x, newHeadPos.y];
 
             var p = newHeadPos;
-            bool wallHitted = (hittedItem.type == FieldItem.ItemType.Wall);
-            wallHitted = wallHitted || p.x<0 || p.y<0 || width<=p.x || height<=p.x;
+            bool wallHitted = p.x<0 || p.y<0 || width<=p.x || height<=p.y;
+            
+            FieldItem hittedItem = default(FieldItem);
+            if (!wallHitted) {
+                hittedItem = field[newHeadPos.x, newHeadPos.y];
+                wallHitted = wallHitted || (hittedItem.type == FieldItem.ItemType.Wall);
+            }           
 
             if (skipMove || wallHitted) {
                 UpdateTail(oldHeadPos, false);
@@ -205,6 +209,7 @@ namespace Simulator {
             var newHeadItem = SampleNewHeadItem(oldHeadItem, prevHeadPos, selectedDir);
 
             MoveHead(oldHeadPos, newHeadPos, hittedItem, newHeadItem);
+            idToFieldPos[id] = newHeadPos;
             updatedEntities.Add(id);
         }
 
@@ -212,51 +217,77 @@ namespace Simulator {
             if (hitted.type == FieldItem.ItemType.None) {
                 unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
                 UpdateTail(oldPos, true);
-            } else if (hitted.type == FieldItem.ItemType.Food) {
-                removedEntities.Add(hitted.id);
-                updatedEntities.Add(hitted.id);
-                RemoveEntityTail(nwPos);
-                idToValue[nwItem.id] += hitted.value;
-                
-                unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
-                UpdateTail(oldPos, (nwItem.flags & (byte)FieldItem.Flag.Shortened) != 0);
 
-                idToCurLength[nwItem.id] += 1;
-                if (idToCurLength[nwItem.id] >= idToSnakeInfo[nwItem.id].maxLength) {
-                    unchecked {nwItem.flags &= (byte) ~(uint)FieldItem.Flag.Shortened;}
-                }
+            } else if (hitted.type == FieldItem.ItemType.Food) {
+                HandleMoveOnFood(oldPos, nwPos, hitted, nwItem);
 
             } else if (hitted.type == FieldItem.ItemType.Snake) {
-                UpdateTail(oldPos, false);
-                if (hitted.frameOfLastUpdate < curFrame) {
-                    UpdateSnake(hitted.id, curMovesDictBuffer[hitted.id]);
-                    hitted = field[nwPos.x, nwPos.y];
+                if (!HandleMoveOnSnake(oldPos, nwPos, nwItem)) return;
 
-                    if (removedEntities.Contains(nwItem.id)) return;
-                }
-
-                if (hitted.type == FieldItem.ItemType.Snake) {
-                    if ((hitted.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
-                        removedEntities.Add(nwItem.id);
-                        removedEntities.Add(hitted.id);
-                        BiteOffSnake(oldPos, field[oldPos.x, oldPos.y]);
-                        BiteOffSnake(nwPos, hitted);
-
-                        return;
-                    } 
-
-                    BiteOffSnake(nwPos, hitted);
-                    hitted = field[nwPos.x, nwPos.y];
-                }
-
-                unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
-                MoveHead(oldPos, nwPos, hitted, nwItem);
             }
 
             field[nwPos.x, nwPos.y] = nwItem;            
         }
 
+        private void HandleMoveOnFood (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
+            removedEntities.Add(hitted.id);
+            updatedEntities.Add(hitted.id);
+            RemoveEntityTail(nwPos);
+            idToValue[nwItem.id] += hitted.value;
+            
+            unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
+            UpdateTail(oldPos, (nwItem.flags & (byte)FieldItem.Flag.Shortened) != 0);
+
+            idToCurLength[nwItem.id] += 1;
+            if (idToCurLength[nwItem.id] >= idToSnakeInfo[nwItem.id].maxLength) {
+                unchecked {nwItem.flags &= (byte) ~(uint)FieldItem.Flag.Shortened;}
+            }
+        }
+
+        private bool HandleMoveOnSnake (Vector2Int oldPos, Vector2Int nwPos, FieldItem nwItem) {
+            UpdateTail(oldPos, false);
+            var hitted = field[nwPos.x, nwPos.y];
+
+            if (hitted.frameOfLastUpdate < curFrame) {
+                UpdateSnake(hitted.id, curMovesDictBuffer[hitted.id]);
+                hitted = field[nwPos.x, nwPos.y];
+
+                if (removedEntities.Contains(nwItem.id)) return false;
+            }
+
+            if (hitted.type == FieldItem.ItemType.Snake) {
+                if ((hitted.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
+                    removedEntities.Add(nwItem.id);
+                    removedEntities.Add(hitted.id);
+                    BiteOffSnake(oldPos, field[oldPos.x, oldPos.y]);
+                    BiteOffSnake(nwPos, hitted);
+
+                    return false;
+                } 
+
+                BiteOffSnake(nwPos, hitted);
+                hitted = field[nwPos.x, nwPos.y];
+            }
+
+            unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
+            MoveHead(oldPos, nwPos, hitted, nwItem);
+
+            return true;
+        }
+
         private void BiteOffSnake (Vector2Int startPos, FieldItem hitted) {
+            var curPos = idToFieldPos[hitted.id];
+            var curItem = field[curPos.x, curPos.y];
+
+            int bitedTile = startPos.y * width + startPos.x;
+            while (curItem.prevNeighborPos != bitedTile) {
+                int prevTile = curItem.prevNeighborPos;
+
+                curPos = new Vector2Int(prevTile % width, prevTile / width);
+                curItem = field[curPos.x, curPos.y];
+            }
+            field[curPos.x, curPos.y].prevNeighborPos = -1;
+
             var clearedPos = new List<Vector2Int>(16);
             RemoveEntityTail(startPos, (pos) => clearedPos.Add(pos));
 
@@ -308,6 +339,25 @@ namespace Simulator {
             }
         }
 
+        private bool ManageValueCost (int id, float valueUsed) {
+            float currentValue = idToValue[id];
+            if (currentValue >= 0) {
+                if (currentValue < valueUsed) {
+                    RemoveEntityTail(idToFieldPos[id]);
+                }
+                
+                currentValue = (float)System.Math.Round((double)(currentValue - valueUsed), 6);
+                idToValue[id] = currentValue;
+            }
+
+            if (currentValue < 0) {
+                removedEntities.Add(id);
+                return false;
+            }
+
+            return true;
+        }
+
         private MoveInfo.Direction OppositDirection (MoveInfo.Direction dir) {
             switch (dir) {
                 case MoveInfo.Direction.Up: return MoveInfo.Direction.Down;
@@ -352,6 +402,7 @@ namespace Simulator {
                 }
 
                 hasTail = true;
+                prevPos = curPos;
                 curPos = new Vector2Int(nextPosIndex%width, nextPosIndex/width);
             }
         }
@@ -368,6 +419,8 @@ namespace Simulator {
             Vector2Int pos = AddNewSnakeToField(id, info.maxLength);
 
             idToFieldPos.Add(id, pos);
+            idToSnakeInfo.Add(id, info);
+
             return pos;
         }
 
@@ -394,7 +447,7 @@ namespace Simulator {
                 
                 int curLength = 0;
                 alteredCells.Clear();
-                for (curLength = 0; curLength < targetLength; ++curLength) {
+                while (curLength < targetLength) {
                     if (width <= curX || height <= curY || curX < 0 || curY < 0) break;
                     if (field[curX, curY].type != FieldItem.ItemType.None) break;
                     int curPos = curY*width + curX;
@@ -409,6 +462,7 @@ namespace Simulator {
                         dir = dir
                     };
 
+                    ++curLength;
                     if (curLength == targetLength) break;
 
                     prevPos = curPos;

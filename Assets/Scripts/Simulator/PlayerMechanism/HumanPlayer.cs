@@ -10,8 +10,8 @@ namespace Simulator {
 
 		private void Start () {
 			info = new SnakeInfo {
-				maxLength = 7,
-				maxValue = 20,
+				maxLength = 5,
+				maxValue = 1,
 				halfViewAngle = 0,
 				eyeQuality = 0,
 				denseLayerSize = 0,
@@ -31,7 +31,7 @@ namespace Simulator {
 		}
 
 		public void HandleMoveResult (MoveResult result) {
-			
+			Debug.Log($"HumanPlayer HandleMove {result}");
 		}
 
 		public MoveInfo MakeMove (Projection playerInput) {

@@ -15,7 +15,7 @@ namespace Simulator {
             this.height = field.GetLength(1);
         }
 
-        public Projection CalcSnakeView (Vector2Int pos, Vector2 dir, float halfViewAngle) {
+        public Projection CalcSnakeView (Vector2Int pos, MoveInfo.Direction dir, float halfViewAngle) {
 
             return default(Projection);
         }

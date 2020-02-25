@@ -13,5 +13,9 @@ namespace Simulator {
 		public byte flags;
 		public ItemType type;
 		public MoveInfo.Direction dir;
+
+		public override string ToString () {
+			return $"{type.ToString()}  {dir.ToString()}";
+		}
 	}
 }
