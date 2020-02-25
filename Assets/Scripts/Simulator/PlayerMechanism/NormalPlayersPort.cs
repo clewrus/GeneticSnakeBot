@@ -41,7 +41,19 @@ namespace Simulator {
 		}
 
 		public List<MoveInfo> MakeMove (FieldProjector projector) {
-			throw new System.NotImplementedException();
+            var moveInfos = new List<MoveInfo>(idToPlayer.Count);
+
+			foreach (var id_player in idToPlayer) {
+                var proj = (needsInput[id_player.Value])? default(Projection) : default(Projection);
+
+                var move = id_player.Value.MakeMove(proj);
+                move.id = id_player.Key;
+                move.valueUsed = 0.1f;
+
+                moveInfos.Add(move);
+            }
+
+            return moveInfos;
 		}
 
 		public SnakeInfo GetSnakeInfo (int id) {
