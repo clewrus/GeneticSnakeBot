@@ -67,7 +67,7 @@ namespace Visualization {
         public void SetTileMaterial (Vector2Int pos, Material mat) {
             if (!ContainsIndex(pos)) return;
             if (instancedTiles[pos.x, pos.y] == null) return;
-            
+
             var renderer = instancedTiles[pos.x, pos.y].GetComponent<MeshRenderer>();
             if (renderer == null) return;
 
@@ -84,7 +84,7 @@ namespace Visualization {
 
 #region Private
         private bool ContainsIndex (Vector2Int pos) {
-            return  0 < pos.x && 0 < pos.y &&
+            return  0 <= pos.x && 0 <= pos.y &&
                     pos.x < instancedTiles.GetLength(0) && 
                     pos.y < instancedTiles.GetLength(1);
         }

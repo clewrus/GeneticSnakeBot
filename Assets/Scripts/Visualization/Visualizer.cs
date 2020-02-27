@@ -1,10 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using Simulator;
 using UnityEngine;
 
 namespace Visualization {
     public class Visualizer : MonoBehaviour, ISimulationObserver {
         private ISnakeField field;
+        private Simulation lastSimulation;
 
         public SnakeShaders shaders;
 
@@ -12,12 +14,114 @@ namespace Visualization {
             field = GetComponent<SnakeField>();
         }
 
-        public void SimulationUpdateHandler (HashSet<int> entitiesIds) {
-            
+        public void SimulationUpdateHandler (Simulation simulation, HashSet<(int id, Vector2Int pos)> entities) {
+            if (lastSimulation != simulation) {
+                lastSimulation = simulation;
+                SynchronizeWithSimulation(simulation);
+            }
+
+            SynchronizeWithSimulation(simulation);
+            //field.ClearTilesMaterials();
+            // foreach (var entity in entitiesIds) {
+            //     UpdateField(simulation, entity);
+            // }
         }
 
-        public void Start () {
-            
+        private void DrawSnake (Simulation sim, FieldItem fieldItem, Vector2Int pos) {
+            byte headMask = (byte)FieldItem.Flag.Head;
+            int curInd = pos.y * sim.width + pos.x;
+            var snakesMaterials = new Stack<Material>();
+
+            Debug.Assert((fieldItem.flags & headMask) == headMask, "Head tile expected.");
+
+            var curDir = fieldItem.dir;
+            snakesMaterials.Push(new Material(shaders.headShader));
+            field.SetTileMaterial(pos, snakesMaterials.Peek());
+            field.SetTileRotation(pos, DirToRot(curDir));            
+
+            curInd = fieldItem.prevNeighborPos;
+            while (curInd != -1) {
+                pos = new Vector2Int(curInd % sim.width, curInd / sim.width);
+
+                int baseDirIndex = (int)curDir - 1;
+                fieldItem = sim.field[pos.x, pos.y];
+                curDir = (fieldItem.prevNeighborPos == -1) ? curDir : fieldItem.dir;
+                int curDirIndex = (int)curDir - 1;
+
+                int relatedDir = (curDirIndex + 4 - baseDirIndex) % 4;              
+
+                switch (relatedDir) {
+                    case 0: snakesMaterials.Push(new Material(shaders.bodyShader)); break;
+                    case 1: snakesMaterials.Push(new Material(shaders.turnShader)); break;
+                    case 3: {
+                        var m = new Material(shaders.turnShader);
+                        m.SetInt("_TurnRight", 1);
+                        snakesMaterials.Push(m);
+                    } break;
+
+                    default: Debug.LogError("Unexpected related direction."); break;
+                }
+
+                field.SetTileMaterial(pos, snakesMaterials.Peek());
+                field.SetTileRotation(pos, DirToRot(curDir));
+
+                curInd = fieldItem.prevNeighborPos;
+            }
+
+            int snakeLength = snakesMaterials.Count;
+            for (int i = 0; i < snakeLength; i++) {
+                var tarMat = snakesMaterials.Pop();
+                tarMat.SetFloat("_SnakeID", fieldItem.id);
+                tarMat.SetFloat("_TailN", i);
+                tarMat.SetFloat("_HeadN", snakeLength - 1 - i);
+            }
+
+        }
+
+        private float DirToRot (MoveInfo.Direction dir) {
+            switch (dir) {
+                case MoveInfo.Direction.Up: return 0;
+                case MoveInfo.Direction.Right: return -90;
+                case MoveInfo.Direction.Down: return 180;
+                case MoveInfo.Direction.Left: return 90;
+            }
+
+            Debug.LogError("Unexpected direction");
+            return 0;
+        }
+
+        private void SynchronizeWithSimulation (Simulation simulation) {
+            field.FieldSize = new Vector2Int(simulation.width, simulation.height);
+            field.ClearTilesMaterials();
+
+            var snakeHeads = new List<(FieldItem item, Vector2Int pos)>(32);
+            for (int x = 0; x < simulation.width; ++x) {
+                for (int y = 0; y < simulation.height; ++y) {
+                    var fieldItem = simulation.field[x, y];
+                    
+                    switch (fieldItem.type) {
+                        case FieldItem.ItemType.None: continue;
+
+                        case FieldItem.ItemType.Snake: {
+                            byte headMask = (byte)FieldItem.Flag.Head;
+                            if ((fieldItem.flags & headMask) == headMask) {
+                                snakeHeads.Add((fieldItem, new Vector2Int(x, y)));
+                            }
+                            break;
+                        }
+
+                        case FieldItem.ItemType.Food: {
+                            var nwFoodMaterial = new Material(shaders.foodShader);
+                            field.SetTileMaterial(new Vector2Int(x, y), nwFoodMaterial);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            foreach (var snake in snakeHeads) {
+                DrawSnake(simulation, snake.item, snake.pos);
+            }
         }
 
         public void Update () {
@@ -54,7 +158,7 @@ namespace Visualization {
             m3.SetFloat("_HeadN", 3);
             m4.SetFloat("_HeadN", 0);
         }
-    }
+	}
 
     [System.Serializable]
     public struct SnakeShaders {

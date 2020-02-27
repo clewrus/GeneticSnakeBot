@@ -5,7 +5,7 @@ using Visualization;
 
 namespace Simulator {
     public partial class Simulation {
-        public List<ISimulationObserver> observers;
+        private List<ISimulationObserver> observers;
 
         public FieldProjector fieldProjector { get; private set; }
         public List<IPlayersPort> playersPorts { get; private set; }
@@ -19,9 +19,9 @@ namespace Simulator {
 
         private int curFrame = 0;
 
-        private readonly int width;
-        private readonly int height;
-        private readonly FieldItem[,] field;
+        public readonly int width;
+        public readonly int height;
+        public readonly FieldItem[,] field;
 
         private System.Random rand;
         private int nextEntityId = 0;
@@ -122,8 +122,15 @@ namespace Simulator {
         }
 
         private void UpdateObservers () {
+            if (observers.Count == 0) return;
+
+            var infoForSending = new HashSet<(int, Vector2Int)>();
+            foreach (var entity in updatedEntities) {
+                infoForSending.Add((entity, idToFieldPos[entity]));
+            }
+            
             foreach (var observer in observers) {
-                observer.SimulationUpdateHandler(updatedEntities);
+                observer.SimulationUpdateHandler(this, infoForSending);
             }
         }
 
@@ -150,6 +157,7 @@ namespace Simulator {
 
                 int nwId = GetNextId();
                 updatedEntities.Add(nwId);
+                idToFieldPos.Add(nwId, nwPos);
 
                 field[nwPos.x, nwPos.y] = new FieldItem {
                     id = nwId,
@@ -296,8 +304,13 @@ namespace Simulator {
 
             idToValue[hitted.id] -= totalValueDelta;
             foreach (var nwPos in clearedPos) {
+                var nwId = GetNextId();
+                
+                updatedEntities.Add(nwId);
+                idToFieldPos.Add(nwId, nwPos);
+
                 field[nwPos.x, nwPos.y] = new FieldItem{
-                    id = GetNextId(),
+                    id = nwId,
                     frameOfLastUpdate = curFrame,
                     prevNeighborPos = -1,
 
