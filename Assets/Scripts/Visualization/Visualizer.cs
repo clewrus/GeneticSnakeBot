@@ -37,11 +37,24 @@ namespace Visualization {
             var curDir = fieldItem.dir;
             snakesMaterials.Push(new Material(shaders.headShader));
             field.SetTileMaterial(pos, snakesMaterials.Peek());
-            field.SetTileRotation(pos, DirToRot(curDir));            
+            field.SetTileRotation(pos, DirToRot(curDir));
 
-            curInd = fieldItem.prevNeighborPos;
+            AddSnakesTileToField(sim, fieldItem, snakesMaterials);
+
+            int snakeLength = snakesMaterials.Count;
+            for (int i = 0; i < snakeLength; i++) {
+                var tarMat = snakesMaterials.Pop();
+                tarMat.SetFloat("_SnakeID", fieldItem.id);
+                tarMat.SetFloat("_TailN", i);
+                tarMat.SetFloat("_HeadN", snakeLength - 1 - i);
+            }
+        }
+
+        private void AddSnakesTileToField (Simulation sim, FieldItem fieldItem, Stack<Material> snakesMaterials) {
+            var curDir = fieldItem.dir;
+            int curInd = fieldItem.prevNeighborPos;
             while (curInd != -1) {
-                pos = new Vector2Int(curInd % sim.width, curInd / sim.width);
+                var pos = new Vector2Int(curInd % sim.width, curInd / sim.width);
 
                 int baseDirIndex = (int)curDir - 1;
                 fieldItem = sim.field[pos.x, pos.y];
@@ -67,15 +80,6 @@ namespace Visualization {
 
                 curInd = fieldItem.prevNeighborPos;
             }
-
-            int snakeLength = snakesMaterials.Count;
-            for (int i = 0; i < snakeLength; i++) {
-                var tarMat = snakesMaterials.Pop();
-                tarMat.SetFloat("_SnakeID", fieldItem.id);
-                tarMat.SetFloat("_TailN", i);
-                tarMat.SetFloat("_HeadN", snakeLength - 1 - i);
-            }
-
         }
 
         private float DirToRot (MoveInfo.Direction dir) {
