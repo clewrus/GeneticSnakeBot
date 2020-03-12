@@ -1,10 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Visualizable;
 using Visualization;
 
 namespace Simulator {
-	public partial class Simulation {
+	public partial class Simulation : IVisualizable {
 		private List<ISimulationObserver> observers;
 
 		public FieldProjector fieldProjector { get; private set; }
@@ -26,6 +27,10 @@ namespace Simulator {
 
 		private System.Random rand;
 		private int nextEntityId = 0;
+
+		public int Width => width;
+		public int Height => height;
+		public FieldItem[,] Field => field;
 
 #region Constants
 		private readonly int SPAWN_BORDER = 1;

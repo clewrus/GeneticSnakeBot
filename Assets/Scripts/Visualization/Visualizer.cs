@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using Visualizable;
 using Simulator;
 using UnityEngine;
 
@@ -8,7 +9,7 @@ namespace Visualization {
 	public class Visualizer : MonoBehaviour, ISimulationObserver {
 		private ISnakeField field;
 
-		private Simulation lastSimulation;
+		private IVisualizable lastSimulation;
 		private Dictionary<int, LinkedList<Vector2Int>> entitysTiles;
 
 		public SnakeShaders shaders;
@@ -17,7 +18,7 @@ namespace Visualization {
 			field = GetComponent<SnakeField>();
 		}
 
-		public void SimulationUpdateHandler (Simulation simulation, HashSet<(int id, Vector2Int? pos)> entities) {
+		public void SimulationUpdateHandler (IVisualizable simulation, HashSet<(int id, Vector2Int? pos)> entities) {
 			if (lastSimulation != simulation) {
 				lastSimulation = simulation;
 				SynchronizeWithSimulation(simulation);
@@ -33,10 +34,10 @@ namespace Visualization {
 
 		#region Entity Redrawing
 
-		private void RedrawEntity (Simulation simulation, int id, bool removed, Vector2Int pos) {
+		private void RedrawEntity (IVisualizable simulation, int id, bool removed, Vector2Int pos) {
 			FieldItem tarItem = default;
 			if (!removed) {
-				tarItem = simulation.field[pos.x, pos.y];
+				tarItem = simulation.Field[pos.x, pos.y];
 				Debug.Assert(tarItem.id == id, "Found item with wrong id.");
 			}
 
@@ -62,20 +63,20 @@ namespace Visualization {
 			}
 		}
 
-		private void ClearPlacementNoneTiles (Simulation simulation, LinkedList<Vector2Int> placement) {
+		private void ClearPlacementNoneTiles (IVisualizable simulation, LinkedList<Vector2Int> placement) {
 			foreach (var pos in placement) {
-				if (simulation.field[pos.x, pos.y].type == FieldItem.ItemType.None) {
+				if (simulation.Field[pos.x, pos.y].type == FieldItem.ItemType.None) {
 					field.ClearTileMaterial(pos);
 				}
 			}
 		}
 
-		private void RedrawFoodEntity (Simulation simulation, FieldItem item, Vector2Int pos) {
+		private void RedrawFoodEntity (IVisualizable simulation, FieldItem item, Vector2Int pos) {
 			if (entitysTiles.TryGetValue(item.id, out LinkedList<Vector2Int> placement)) {
 				RedrawAction(simulation, placement, pos, 
 					(Vector2Int p, bool isOld) => {
 						if (isOld) {
-							if (simulation.field[p.x, p.y].type == FieldItem.ItemType.None) {
+							if (simulation.Field[p.x, p.y].type == FieldItem.ItemType.None) {
 								field.ClearTileMaterial(p);
 							}
 						} else {
@@ -92,7 +93,7 @@ namespace Visualization {
 			}
 		}
 
-		private void RedrawWallEntity (Simulation simulation, FieldItem item, Vector2Int pos) {
+		private void RedrawWallEntity (IVisualizable simulation, FieldItem item, Vector2Int pos) {
 			if (entitysTiles.TryGetValue(item.id, out LinkedList<Vector2Int> placement)) {
 				Debug.LogWarning("TODO: Realize wall redrawing");
 			} else {
@@ -100,11 +101,11 @@ namespace Visualization {
 			}
 		}
 
-		private void RedrawSnakeEntity (Simulation simulation, FieldItem item, Vector2Int pos) {
+		private void RedrawSnakeEntity (IVisualizable simulation, FieldItem item, Vector2Int pos) {
 			if (entitysTiles.TryGetValue(item.id, out LinkedList<Vector2Int> placement)) {
 				RedrawAction(simulation, placement, pos,
 					(Vector2Int p, bool isOld) => {
-						if (isOld && (simulation.field[p.x, p.y].type == FieldItem.ItemType.None)) {
+						if (isOld && (simulation.Field[p.x, p.y].type == FieldItem.ItemType.None)) {
 							field.ClearTileMaterial(p);
 						}
 					}
@@ -117,10 +118,10 @@ namespace Visualization {
 			}
 		}
 
-		private void RedrawAction (Simulation s, LinkedList<Vector2Int> tiles, Vector2Int nwPos, Action<Vector2Int, bool> redrawTile) {
+		private void RedrawAction (IVisualizable s, LinkedList<Vector2Int> tiles, Vector2Int nwPos, Action<Vector2Int, bool> redrawTile) {
 			var firstOldTilePos = tiles.First.Value;
 			var curPos = nwPos;
-			var curItem = s.field[curPos.x, curPos.y];
+			var curItem = s.Field[curPos.x, curPos.y];
 
 			LinkedListNode<Vector2Int> curNode = null;
 			while (firstOldTilePos != curPos) {
@@ -128,8 +129,8 @@ namespace Visualization {
 				curNode = (curNode == null) ? tiles.AddFirst(curPos) : tiles.AddAfter(curNode, curPos);
 
 				if (curItem.prevNeighborPos < 0) break;
-				curPos = new Vector2Int(curItem.prevNeighborPos % s.width, curItem.prevNeighborPos / s.width);
-				curItem = s.field[curPos.x, curPos.y];
+				curPos = new Vector2Int(curItem.prevNeighborPos % s.Width, curItem.prevNeighborPos / s.Width);
+				curItem = s.Field[curPos.x, curPos.y];
 			}
 
 			if (curNode == null) {
@@ -142,8 +143,8 @@ namespace Visualization {
 				curNode.Value = curPos;
 
 				if (curItem.prevNeighborPos < 0) break;
-				curPos = new Vector2Int(curItem.prevNeighborPos % s.width, curItem.prevNeighborPos / s.width);
-				curItem = s.field[curPos.x, curPos.y];
+				curPos = new Vector2Int(curItem.prevNeighborPos % s.Width, curItem.prevNeighborPos / s.Width);
+				curItem = s.Field[curPos.x, curPos.y];
 			}
 
 			while (curNode != tiles.Last) {
@@ -156,16 +157,16 @@ namespace Visualization {
 
 		#region FieldRedrawing
 
-		private void SynchronizeWithSimulation (Simulation simulation) {
-			field.FieldSize = new Vector2Int(simulation.width, simulation.height);
+		private void SynchronizeWithSimulation (IVisualizable simulation) {
+			field.FieldSize = new Vector2Int(simulation.Width, simulation.Height);
 			entitysTiles = new Dictionary<int, LinkedList<Vector2Int>>();
 
 			field.ClearTilesMaterials();
 
 			var snakeHeads = new List<(FieldItem item, Vector2Int pos)>(32);
-			for (int x = 0; x < simulation.width; ++x) {
-				for (int y = 0; y < simulation.height; ++y) {
-					var fieldItem = simulation.field[x, y];
+			for (int x = 0; x < simulation.Width; ++x) {
+				for (int y = 0; y < simulation.Height; ++y) {
+					var fieldItem = simulation.Field[x, y];
 					var fieldItemPos = new Vector2Int(x, y);
 					
 					switch (fieldItem.type) {
@@ -195,19 +196,19 @@ namespace Visualization {
 			}
 		}
 
-		private LinkedList<Vector2Int> FindSnakesPlacement (Simulation simulation, Vector2Int headPos) {
-			Debug.Assert((simulation.field[headPos.x, headPos.y].flags & (byte)FieldItem.Flag.Head) != 0, "Head tile expected.");
+		private LinkedList<Vector2Int> FindSnakesPlacement (IVisualizable simulation, Vector2Int headPos) {
+			Debug.Assert((simulation.Field[headPos.x, headPos.y].flags & (byte)FieldItem.Flag.Head) != 0, "Head tile expected.");
 
 			var placement = new LinkedList<Vector2Int>();
 
 			placement.AddLast(headPos);
-			int nextTile = simulation.field[headPos.x, headPos.y].prevNeighborPos;
+			int nextTile = simulation.Field[headPos.x, headPos.y].prevNeighborPos;
 
-			int width = simulation.width;
+			int width = simulation.Width;
 			while (nextTile >= 0) {
 				var nextPos = new Vector2Int(nextTile % width, nextTile / width);
 				placement.AddLast(nextPos);
-				nextTile = simulation.field[nextPos.x, nextPos.y].prevNeighborPos;
+				nextTile = simulation.Field[nextPos.x, nextPos.y].prevNeighborPos;
 			}
 
 			return placement;
@@ -218,7 +219,7 @@ namespace Visualization {
 			field.SetTileMaterial(foodPos, nwFoodMaterial);
 		}
 
-		private void DrawSnake (Simulation sim, FieldItem fieldItem, Vector2Int pos) {
+		private void DrawSnake (IVisualizable sim, FieldItem fieldItem, Vector2Int pos) {
 			byte headMask = (byte)FieldItem.Flag.Head;
 			var snakesMaterials = new Stack<Material>();
 
@@ -240,14 +241,14 @@ namespace Visualization {
 			}
 		}
 
-		private void AddSnakesTileToField (Simulation sim, FieldItem fieldItem, Stack<Material> snakesMaterials) {
+		private void AddSnakesTileToField (IVisualizable sim, FieldItem fieldItem, Stack<Material> snakesMaterials) {
 			var curDir = fieldItem.dir;
 			int curInd = fieldItem.prevNeighborPos;
 			while (curInd != -1) {
-				var pos = new Vector2Int(curInd % sim.width, curInd / sim.width);
+				var pos = new Vector2Int(curInd % sim.Width, curInd / sim.Width);
 
 				int baseDirIndex = (int)curDir - 1;
-				fieldItem = sim.field[pos.x, pos.y];
+				fieldItem = sim.Field[pos.x, pos.y];
 				curDir = (fieldItem.prevNeighborPos == -1) ? curDir : fieldItem.dir;
 				int curDirIndex = (int)curDir - 1;
 

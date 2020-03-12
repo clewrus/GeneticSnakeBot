@@ -1,5 +1,7 @@
 
-namespace Simulator {
+using Simulator;
+
+namespace Visualizable {
 	public struct FieldItem {
 		public enum ItemType {None, Food, Snake, Wall};
 		public enum Flag {None = 0, Head = 1, Shortened = 2};
