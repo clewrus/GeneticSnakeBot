@@ -4,539 +4,558 @@ using UnityEngine;
 using Visualization;
 
 namespace Simulator {
-    public partial class Simulation {
-        private List<ISimulationObserver> observers;
+	public partial class Simulation {
+		private List<ISimulationObserver> observers;
 
-        public FieldProjector fieldProjector { get; private set; }
-        public List<IPlayersPort> playersPorts { get; private set; }
+		public FieldProjector fieldProjector { get; private set; }
+		public List<IPlayersPort> playersPorts { get; private set; }
 
-        private Dictionary<int, Vector2Int> idToFieldPos;
-        private Dictionary<int, SnakeInfo> idToSnakeInfo;
+		private HashSet<int> deadSnakes;
+		private Dictionary<int, Vector2Int> idToFieldPos;
+		private Dictionary<int, SnakeInfo> idToSnakeInfo;
 
-        private Dictionary<int, int> idToCurLength;
-        private Dictionary<int, IPlayersPort> idToPort;
-        private Dictionary<int, float> idToValue;
+		private Dictionary<int, int> idToCurLength;
+		private Dictionary<int, IPlayersPort> idToPort;
+		private Dictionary<int, float> idToValue;
 
-        private int curFrame = 0;
+		private int curFrame = 0;
 
-        public readonly int width;
-        public readonly int height;
-        public readonly FieldItem[,] field;
+		public readonly int width;
+		public readonly int height;
+		public readonly FieldItem[,] field;
 
-        private System.Random rand;
-        private int nextEntityId = 0;
+		private System.Random rand;
+		private int nextEntityId = 0;
 
 #region Constants
-        private readonly int SPAWN_BORDER = 1;
+		private readonly int SPAWN_BORDER = 1;
 
-        private readonly float SPAWNED_FOOD_VALUE = 1;
-        private readonly float FOOD_SPAWN_RATE = 0.1f;
-        private readonly float HALF_FOOD_FRAME = 30;
+		private readonly float SPAWNED_FOOD_VALUE = 1;
+		private readonly float FOOD_SPAWN_RATE = 0.1f;
+		private readonly float HALF_FOOD_FRAME = 30;
 #endregion
 
 #region Buffers
-        private List<MoveInfo> curMovesListBuffer = new List<MoveInfo>();
-        private Dictionary<int, MoveInfo> curMovesDictBuffer = new Dictionary<int, MoveInfo>();
+		private List<MoveInfo> curMovesListBuffer = new List<MoveInfo>();
+		private Dictionary<int, MoveInfo> curMovesDictBuffer = new Dictionary<int, MoveInfo>();
 
-        private HashSet<int> updatedEntities = new HashSet<int>();
-        private HashSet<int> removedEntities = new HashSet<int>();
+		private HashSet<int> updatedEntities = new HashSet<int>();
+		private HashSet<int> removedEntities = new HashSet<int>();
 #endregion
 
-        public Simulation (int width, int height) {
-            observers = new List<ISimulationObserver>();
-            field = new FieldItem[width, height];
-            rand = new System.Random();
+		public Simulation (int width, int height) {
+			observers = new List<ISimulationObserver>();
+			field = new FieldItem[width, height];
+			rand = new System.Random();
 
-            this.width = width;
-            this.height = height;
+			this.width = width;
+			this.height = height;
 
-            fieldProjector = new FieldProjector(field);
-            playersPorts = new List<IPlayersPort>();
+			fieldProjector = new FieldProjector(field);
+			playersPorts = new List<IPlayersPort>();
 
-            idToFieldPos = new Dictionary<int, Vector2Int>();
-            idToSnakeInfo = new Dictionary<int, SnakeInfo>();
+			deadSnakes = new HashSet<int>();
+			idToFieldPos = new Dictionary<int, Vector2Int>();
+			idToSnakeInfo = new Dictionary<int, SnakeInfo>();
 
-            idToCurLength = new Dictionary<int, int>();
-            idToPort = new Dictionary<int, IPlayersPort>();
-            idToValue = new Dictionary<int, float>();
-        }
+			idToCurLength = new Dictionary<int, int>();
+			idToPort = new Dictionary<int, IPlayersPort>();
+			idToValue = new Dictionary<int, float>();
+		}
 
-        public void AddPlayerPort (IPlayersPort nwPort) {
-            if (playersPorts.Contains(nwPort)) return;
+		public void AddPlayerPort (IPlayersPort nwPort) {
+			if (playersPorts.Contains(nwPort)) return;
 
-            playersPorts.Add(nwPort);
-            nwPort.GetNextId = this.GetNextId;
-        }
+			playersPorts.Add(nwPort);
+			nwPort.GetNextId = this.GetNextId;
+		}
 
-        public void AttachObserver (ISimulationObserver nwObserver) {
-            if (observers.Contains(nwObserver)) return;
-            observers.Add(nwObserver);
-        }
+		public void AttachObserver (ISimulationObserver nwObserver) {
+			if (observers.Contains(nwObserver)) return;
+			observers.Add(nwObserver);
+		}
 
-        public void RemoveObserver (ISimulationObserver oldObserver) {
-            if (!observers.Contains(oldObserver)) return;
-            observers.Remove(oldObserver);
-        }
+		public void RemoveObserver (ISimulationObserver oldObserver) {
+			if (!observers.Contains(oldObserver)) return;
+			observers.Remove(oldObserver);
+		}
 
-        public void MakeStep () {
-            LoadMovesToDictBuffer();
-            MakeSimulationStep();
-            SendStepResultsToPorts();
+		public void MakeStep () {
+			LoadMovesToDictBuffer();
+			MakeSimulationStep();
+			SendStepResultsToPorts();
 
-            UpdateObservers();
-        }
+			UpdateObservers();
+		}
 
-        private void LoadMovesToDictBuffer () {
-            curMovesListBuffer.Clear();
-            foreach (var port in playersPorts) {
-                var portMoves = port.MakeMove(fieldProjector);
-                curMovesListBuffer.AddRange(portMoves);
-            }
+		private void LoadMovesToDictBuffer () {
+			curMovesListBuffer.Clear();
+			foreach (var port in playersPorts) {
+				var portMoves = port.MakeMove(fieldProjector);
+				curMovesListBuffer.AddRange(portMoves);
+			}
 
-            curMovesDictBuffer.Clear();
-            curMovesListBuffer.ForEach((e) => curMovesDictBuffer.Add(e.id, e));
-        }
+			curMovesDictBuffer.Clear();
+			curMovesListBuffer.ForEach((e) => curMovesDictBuffer.Add(e.id, e));
+		}
 
-        private void SendStepResultsToPorts () {
-            var results = new Dictionary<IPlayersPort, List<MoveResult>> ();
-            foreach (var id_port in idToPort) {
-                if (!results.ContainsKey(id_port.Value)) {
-                    results.Add(id_port.Value, new List<MoveResult>(32));
-                }
+		private void SendStepResultsToPorts () {
+			var results = new Dictionary<IPlayersPort, List<MoveResult>> ();
+			foreach (var id_port in idToPort) {
+				var headDir = MoveInfo.Direction.None;
+				if (idToFieldPos.TryGetValue(id_port.Key, out Vector2Int headPos)) {
+					headDir = field[headPos.x, headPos.y].dir;
+				}
 
-                var headPos = idToFieldPos[id_port.Key];
-                var headDir = field[headPos.x, headPos.y].dir;
+				if (!results.TryGetValue(id_port.Value, out List<MoveResult> curPortResults)) {
+					curPortResults = new List<MoveResult>(32);
+					results.Add(id_port.Value, curPortResults);
+				}
 
-                results[id_port.Value].Add(new MoveResult {
-                    id = id_port.Key,
-                    value = idToValue[id_port.Key],
-                    headPos = headPos,
-                    headDir = headDir,
-                    flag =  ((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive),
-                });
-            }
+				curPortResults.Add(new MoveResult {
+					id = id_port.Key,
+					value = idToValue[id_port.Key],
+					headPos = headPos,
+					headDir = headDir,
+					flag = ((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive),
+				});
+			}
 
-            foreach (var port_result in results) {
-                port_result.Key.HandleMoveResult(port_result.Value);
-            }
-        }
+			foreach (var port_result in results) {
+				port_result.Key.HandleMoveResult(port_result.Value);
+			}
+		}
 
-        private void UpdateObservers () {
-            if (observers.Count == 0) return;
+		private void UpdateObservers () {
+			if (observers.Count == 0) return;
 
-            var infoForSending = new HashSet<(int, Vector2Int)>();
-            foreach (var entity in updatedEntities) {
-                infoForSending.Add((entity, idToFieldPos[entity]));
-            }
-            
-            foreach (var observer in observers) {
-                observer.SimulationUpdateHandler(this, infoForSending);
-            }
-        }
+			var infoForSending = new HashSet<(int, Vector2Int?)>();
+			foreach (var entity in updatedEntities) {
+				Vector2Int? entityPos = null;
+				if (idToFieldPos.TryGetValue(entity, out Vector2Int realPosition)) {
+					entityPos = realPosition;
+				}
+				infoForSending.Add((entity, entityPos));
+			}
+			
+			foreach (var observer in observers) {
+				observer.SimulationUpdateHandler(this, infoForSending);
+			}
+		}
 
-        private void MakeSimulationStep () {
-            curFrame += 1;
-            updatedEntities.Clear();
-            removedEntities.Clear();
+		private void MakeSimulationStep () {
+			curFrame += 1;
+			updatedEntities.Clear();
+			removedEntities.Clear();
 
-            foreach (var move in curMovesDictBuffer) {
-                UpdateSnake(move.Key, move.Value);
-            }
+			foreach (var move in curMovesDictBuffer) {
+				UpdateSnake(move.Key, move.Value);
+				updatedEntities.Add(move.Key);
+			}
 
-            ScatterFood();
-        }
+			ScatterFood();
+		}
 
 #region Food scattering
 
-        private void ScatterFood () {
-            int nwPiecesAmount = FoodPiecesAmount(rand, curFrame, new Vector2Int(width, height));
+		private void ScatterFood () {
+			int nwPiecesAmount = FoodPiecesAmount(rand, curFrame, new Vector2Int(width, height));
 
-            for (int i = 0; i < nwPiecesAmount; i++) {
-                var nwPos = new Vector2Int(rand.Next(0, width), rand.Next(0, height));
-                if (field[nwPos.x, nwPos.y].type != FieldItem.ItemType.None) continue;
+			for (int i = 0; i < nwPiecesAmount; i++) {
+				var nwPos = new Vector2Int(rand.Next(0, width), rand.Next(0, height));
+				if (field[nwPos.x, nwPos.y].type != FieldItem.ItemType.None) continue;
 
-                int nwId = GetNextId();
-                updatedEntities.Add(nwId);
-                idToFieldPos.Add(nwId, nwPos);
+				int nwId = GetNextId();
+				updatedEntities.Add(nwId);
+				idToFieldPos.Add(nwId, nwPos);
 
-                field[nwPos.x, nwPos.y] = new FieldItem {
-                    id = nwId,
-                    frameOfLastUpdate = curFrame,
-                    prevNeighborPos = -1,
-                    value = SPAWNED_FOOD_VALUE,
+				field[nwPos.x, nwPos.y] = new FieldItem {
+					id = nwId,
+					frameOfLastUpdate = curFrame,
+					prevNeighborPos = -1,
+					value = SPAWNED_FOOD_VALUE,
 
-                    type = FieldItem.ItemType.Food,
-                };
-            }
-        }
+					type = FieldItem.ItemType.Food,
+				};
+			}
+		}
 
-        public int FoodPiecesAmount (System.Random rand, int frame, Vector2Int fieldSize) {
-            float x = (float)frame / HALF_FOOD_FRAME;
+		public int FoodPiecesAmount (System.Random rand, int frame, Vector2Int fieldSize) {
+			float x = (float)frame / HALF_FOOD_FRAME;
 
-            float maxPiecesPerCell = FOOD_SPAWN_RATE / (1 + x);
-            float piecesPerCell = (float)(maxPiecesPerCell * rand.NextDouble());
+			float maxPiecesPerCell = FOOD_SPAWN_RATE / (1 + x);
+			float piecesPerCell = (float)(maxPiecesPerCell * rand.NextDouble());
 
-            return (int)(piecesPerCell * fieldSize.x * fieldSize.y);
-        }
+			return (int)(piecesPerCell * fieldSize.x * fieldSize.y);
+		}
 
 #endregion
 
 #region Snake position update
 
-        private void UpdateSnake (int id, MoveInfo moveInfo) {
-            Vector2Int oldHeadPos;
-            if (!idToFieldPos.TryGetValue(id, out oldHeadPos)) {
-                oldHeadPos = AddNewSnake(id);
-                idToPort.Add(id, FindSnakePort(id));
-            }
+		private void UpdateSnake (int id, MoveInfo moveInfo) {
+			Vector2Int oldHeadPos;
+			if (!idToFieldPos.TryGetValue(id, out oldHeadPos) && !deadSnakes.Contains(id)) {
+				oldHeadPos = AddNewSnake(id);
+				idToPort.Add(id, FindSnakePort(id));
+			}
 
-            if (!ManageValueCost(id, moveInfo.valueUsed)) return;            
+			if (!ManageValueCost(id, moveInfo.valueUsed)) return;            
 
-            var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
-            var selectedDir = (moveInfo.dir==MoveInfo.Direction.None)? oldHeadItem.dir: moveInfo.dir;
-            bool skipMove = (selectedDir == OppositDirection(oldHeadItem.dir));
+			var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
+			var selectedDir = (moveInfo.dir==MoveInfo.Direction.None)? oldHeadItem.dir: moveInfo.dir;
+			bool skipMove = (selectedDir == OppositDirection(oldHeadItem.dir));
 
-            var newHeadPos = CalcNewHeadPos(oldHeadPos, selectedDir);
+			var newHeadPos = CalcNewHeadPos(oldHeadPos, selectedDir);
 
-            var p = newHeadPos;
-            bool wallHitted = p.x<0 || p.y<0 || width<=p.x || height<=p.y;
-            
-            FieldItem hittedItem = default(FieldItem);
-            if (!wallHitted) {
-                hittedItem = field[newHeadPos.x, newHeadPos.y];
-                wallHitted = wallHitted || (hittedItem.type == FieldItem.ItemType.Wall);
-            }           
+			var p = newHeadPos;
+			bool wallHitted = p.x<0 || p.y<0 || width<=p.x || height<=p.y;
+			
+			FieldItem hittedItem = default(FieldItem);
+			if (!wallHitted) {
+				hittedItem = field[newHeadPos.x, newHeadPos.y];
+				wallHitted = wallHitted || (hittedItem.type == FieldItem.ItemType.Wall);
+			}           
 
-            if (skipMove || wallHitted) {
-                UpdateTail(oldHeadPos, false);
-                updatedEntities.Add(id);
-                return;
-            }
-            
-            int prevHeadPos = oldHeadPos.y * width + oldHeadPos.x;
-            var newHeadItem = SampleNewHeadItem(oldHeadItem, prevHeadPos, selectedDir);
+			if (skipMove || wallHitted) {
+				UpdateTail(oldHeadPos, false);
+				
+				return;
+			}
+			
+			int prevHeadPos = oldHeadPos.y * width + oldHeadPos.x;
+			var newHeadItem = SampleNewHeadItem(oldHeadItem, prevHeadPos, selectedDir);
 
-            MoveHead(oldHeadPos, newHeadPos, hittedItem, newHeadItem);
-            idToFieldPos[id] = newHeadPos;
-            updatedEntities.Add(id);
-        }
+			MoveHead(oldHeadPos, newHeadPos, hittedItem, newHeadItem);
+			idToFieldPos[id] = newHeadPos;
+		}
 
-        private void MoveHead (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
-            if (hitted.type == FieldItem.ItemType.None) {
-                unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
-                UpdateTail(oldPos, true);
-                field[nwPos.x, nwPos.y] = nwItem;
+		private void MoveHead (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
+			if (hitted.type == FieldItem.ItemType.None) {
+				unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
+				UpdateTail(oldPos, true);
+				field[nwPos.x, nwPos.y] = nwItem;
 
-            } else if (hitted.type == FieldItem.ItemType.Food) {
-                HandleMoveOnFood(oldPos, nwPos, hitted, nwItem);
+			} else if (hitted.type == FieldItem.ItemType.Food) {
+				HandleMoveOnFood(oldPos, nwPos, hitted, nwItem);
 
-            } else if (hitted.type == FieldItem.ItemType.Snake) {
-                HandleMoveOnSnake(oldPos, nwPos, nwItem);
-            }  
-        }
+			} else if (hitted.type == FieldItem.ItemType.Snake) {
+				HandleMoveOnSnake(oldPos, nwPos, nwItem);
+			}  
+		}
 
-        private void HandleMoveOnFood (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
-            removedEntities.Add(hitted.id);
-            updatedEntities.Add(hitted.id);
-            RemoveEntityTail(nwPos);
-            idToValue[nwItem.id] += hitted.value;
-            
-            unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
+		private void HandleMoveOnFood (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
+			updatedEntities.Add(hitted.id);
 
-            var moveForward = ((nwItem.flags & (byte)FieldItem.Flag.Shortened) == 0);
-            UpdateTail(oldPos, moveForward);
+			removedEntities.Add(hitted.id);
+			idToFieldPos.Remove(hitted.id);
 
-            if (!moveForward) {
-                idToCurLength[nwItem.id] += 1;
+			RemoveEntityTail(nwPos);
+			idToValue[nwItem.id] += hitted.value;
+			
+			unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head | FieldItem.Flag.Shortened)); }
 
-                if (idToSnakeInfo[nwItem.id].maxLength <= idToCurLength[nwItem.id]) {
-                    unchecked { nwItem.flags &= (byte)(~(uint)FieldItem.Flag.Shortened); }
-                }
-            }
+			var moveForward = ((nwItem.flags & (byte)FieldItem.Flag.Shortened) == 0);
+			UpdateTail(oldPos, moveForward);
 
-            field[nwPos.x, nwPos.y] = nwItem;
-        }
+			if (!moveForward) {
+				idToCurLength[nwItem.id] += 1;
 
-        private void HandleMoveOnSnake (Vector2Int oldPos, Vector2Int nwPos, FieldItem nwItem) {
-            UpdateTail(oldPos, false);
-            uint initFlag = field[oldPos.x, oldPos.y].flags;
-            var hitted = field[nwPos.x, nwPos.y];
+				if (idToSnakeInfo[nwItem.id].maxLength <= idToCurLength[nwItem.id]) {
+					unchecked { nwItem.flags &= (byte)(~(uint)FieldItem.Flag.Shortened); }
+				}
+			}
 
-            if (hitted.frameOfLastUpdate < curFrame) {
-                UpdateSnake(hitted.id, curMovesDictBuffer[hitted.id]);
-                hitted = field[nwPos.x, nwPos.y];
+			field[nwPos.x, nwPos.y] = nwItem;
+		}
 
-                if (removedEntities.Contains(nwItem.id)) return;
-            }
+		private void HandleMoveOnSnake (Vector2Int oldPos, Vector2Int nwPos, FieldItem nwItem) {
+			UpdateTail(oldPos, false);
+			uint initFlag = field[oldPos.x, oldPos.y].flags;
+			var hitted = field[nwPos.x, nwPos.y];
 
-            if (hitted.type == FieldItem.ItemType.Snake) {
-                if ((hitted.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
-                    removedEntities.Add(nwItem.id);
-                    removedEntities.Add(hitted.id);
-                    BiteOffSnake(oldPos, field[oldPos.x, oldPos.y]);
-                    BiteOffSnake(nwPos, hitted);
+			if (hitted.frameOfLastUpdate < curFrame) {
+				UpdateSnake(hitted.id, curMovesDictBuffer[hitted.id]);
+				hitted = field[nwPos.x, nwPos.y];
 
-                    return;
-                }
+				if (removedEntities.Contains(nwItem.id)) return;
+			}
 
-                BiteOffSnake(nwPos, hitted);
+			if (hitted.type == FieldItem.ItemType.Snake) {
+				if ((hitted.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
+					removedEntities.Add(nwItem.id);
+					idToFieldPos.Remove(nwItem.id);
 
-                var hittedHeadPos = idToFieldPos[hitted.id];
-                unchecked { field[hittedHeadPos.x, hittedHeadPos.y].flags |= (byte)FieldItem.Flag.Shortened; }
+					deadSnakes.Add(hitted.id);
+					removedEntities.Add(hitted.id);
+					idToFieldPos.Remove(hitted.id);
 
-                hitted = field[nwPos.x, nwPos.y];
-            }
+					BiteOffSnake(oldPos, field[oldPos.x, oldPos.y]);
+					BiteOffSnake(nwPos, hitted);
 
-            uint curFlag = field[oldPos.x, oldPos.y].flags;
-            uint additionalFlags = initFlag ^ curFlag;
-            nwItem.flags |= (byte)additionalFlags;
+					return;
+				}
 
-            unchecked { field[oldPos.x, oldPos.y].flags = (byte)(initFlag & (~(uint)(FieldItem.Flag.Head))); }
-            MoveHead(oldPos, nwPos, hitted, nwItem);
-        }
+				BiteOffSnake(nwPos, hitted);
 
-        private void BiteOffSnake (Vector2Int startPos, FieldItem hitted) {
-            var curPos = idToFieldPos[hitted.id];
-            var curItem = field[curPos.x, curPos.y];
+				var hittedHeadPos = idToFieldPos[hitted.id];
+				unchecked { field[hittedHeadPos.x, hittedHeadPos.y].flags |= (byte)FieldItem.Flag.Shortened; }
 
-            int bitedTile = startPos.y * width + startPos.x;
-            while (curItem.prevNeighborPos != bitedTile) {
-                int prevTile = curItem.prevNeighborPos;
+				hitted = field[nwPos.x, nwPos.y];
+			}
 
-                curPos = new Vector2Int(prevTile % width, prevTile / width);
-                curItem = field[curPos.x, curPos.y];
-            }
-            field[curPos.x, curPos.y].prevNeighborPos = -1;
+			uint curFlag = field[oldPos.x, oldPos.y].flags;
+			uint additionalFlags = initFlag ^ curFlag;
+			nwItem.flags |= (byte)additionalFlags;
 
-            var clearedPos = new List<Vector2Int>(16);
-            RemoveEntityTail(startPos, (pos) => clearedPos.Add(pos));
+			unchecked { field[oldPos.x, oldPos.y].flags = (byte)(initFlag & (~(uint)(FieldItem.Flag.Head))); }
+			MoveHead(oldPos, nwPos, hitted, nwItem);
+		}
 
-            idToCurLength[hitted.id] -= clearedPos.Count;
-            ScatterSnakeTail(hitted, clearedPos);
-        }
+		private void BiteOffSnake (Vector2Int startPos, FieldItem hitted) {
+			var curPos = idToFieldPos[hitted.id];
+			var curItem = field[curPos.x, curPos.y];
 
-        private void ScatterSnakeTail (FieldItem hitted, List<Vector2Int> foodPos) {
-            var foodVal = idToValue[hitted.id] / idToCurLength[hitted.id];
-            var totalValueDelta = foodPos.Count * foodVal;
+			int bitedTile = startPos.y * width + startPos.x;
+			while (curItem.prevNeighborPos != bitedTile) {
+				int prevTile = curItem.prevNeighborPos;
 
-            idToValue[hitted.id] -= totalValueDelta;
-            foreach (var nwPos in foodPos) {
-                var nwId = GetNextId();
-                
-                updatedEntities.Add(nwId);
-                idToFieldPos.Add(nwId, nwPos);
+				curPos = new Vector2Int(prevTile % width, prevTile / width);
+				curItem = field[curPos.x, curPos.y];
+			}
+			field[curPos.x, curPos.y].prevNeighborPos = -1;
 
-                field[nwPos.x, nwPos.y] = new FieldItem{
-                    id = nwId,
-                    frameOfLastUpdate = curFrame,
-                    prevNeighborPos = -1,
+			var clearedPos = new List<Vector2Int>(16);
+			RemoveEntityTail(startPos, (pos) => clearedPos.Add(pos));
 
-                    value = foodVal * 0.8f,
-                    type = FieldItem.ItemType.Food
-                };
-            }
-        }
+			idToCurLength[hitted.id] -= clearedPos.Count;
+			ScatterSnakeTail(hitted, clearedPos);
+		}
 
-        private FieldItem SampleNewHeadItem (FieldItem old, int ppos, MoveInfo.Direction dir) {
-            return new FieldItem {
-                id = old.id,
-                frameOfLastUpdate = curFrame,
-                prevNeighborPos = ppos,
+		private void ScatterSnakeTail (FieldItem hitted, List<Vector2Int> foodPos) {
+			var foodVal = idToValue[hitted.id] / idToCurLength[hitted.id];
+			var totalValueDelta = foodPos.Count * foodVal;
 
-                flags = old.flags,
-                type = FieldItem.ItemType.Snake,
-                dir = dir                
-            };
-        }
+			idToValue[hitted.id] -= totalValueDelta;
+			foreach (var nwPos in foodPos) {
+				var nwId = GetNextId();
+				
+				updatedEntities.Add(nwId);
+				idToFieldPos.Add(nwId, nwPos);
 
-        private void RemoveEntityTail (Vector2Int tarPos, System.Action<Vector2Int> onRemove=null) {
-            var tarItem = field[tarPos.x, tarPos.y];
+				field[nwPos.x, nwPos.y] = new FieldItem{
+					id = nwId,
+					frameOfLastUpdate = curFrame,
+					prevNeighborPos = -1,
 
-            field[tarPos.x, tarPos.y] = default(FieldItem);
-            onRemove?.Invoke(tarPos);
+					value = foodVal * 0.8f,
+					type = FieldItem.ItemType.Food
+				};
+			}
+		}
 
-            var nxtPos = tarItem.prevNeighborPos;
-            
-            while (nxtPos >= 0 && tarItem.type != FieldItem.ItemType.None) {
-                tarPos = new Vector2Int(nxtPos % width, nxtPos / width);
-                tarItem = field[tarPos.x, tarPos.y];
+		private FieldItem SampleNewHeadItem (FieldItem old, int ppos, MoveInfo.Direction dir) {
+			return new FieldItem {
+				id = old.id,
+				frameOfLastUpdate = curFrame,
+				prevNeighborPos = ppos,
 
-                field[tarPos.x, tarPos.y] = default(FieldItem);
-                onRemove?.Invoke(tarPos);
+				flags = old.flags,
+				type = FieldItem.ItemType.Snake,
+				dir = dir                
+			};
+		}
 
-                nxtPos = tarItem.prevNeighborPos;
-            }
-        }
+		private void RemoveEntityTail (Vector2Int tarPos, System.Action<Vector2Int> onRemove=null) {
+			var tarItem = field[tarPos.x, tarPos.y];
 
-        private bool ManageValueCost (int id, float valueUsed) {
-            float currentValue = idToValue[id];
-            if (currentValue >= 0) {
-                if (currentValue < valueUsed) {
-                    RemoveEntityTail(idToFieldPos[id]);
-                }
-                
-                currentValue = (float)System.Math.Round((double)(currentValue - valueUsed), 6);
-                idToValue[id] = currentValue;
-            }
+			field[tarPos.x, tarPos.y] = default(FieldItem);
+			onRemove?.Invoke(tarPos);
 
-            if (currentValue < 0) {
-                removedEntities.Add(id);
-                return false;
-            }
+			var nxtPos = tarItem.prevNeighborPos;
+			
+			while (nxtPos >= 0 && tarItem.type != FieldItem.ItemType.None) {
+				tarPos = new Vector2Int(nxtPos % width, nxtPos / width);
+				tarItem = field[tarPos.x, tarPos.y];
 
-            return true;
-        }
+				field[tarPos.x, tarPos.y] = default(FieldItem);
+				onRemove?.Invoke(tarPos);
 
-        private MoveInfo.Direction OppositDirection (MoveInfo.Direction dir) {
-            switch (dir) {
-                case MoveInfo.Direction.Up: return MoveInfo.Direction.Down;
-                case MoveInfo.Direction.Right: return MoveInfo.Direction.Left;
-                case MoveInfo.Direction.Down: return MoveInfo.Direction.Up;
-                case MoveInfo.Direction.Left: return MoveInfo.Direction.Right;
-            }
+				nxtPos = tarItem.prevNeighborPos;
+			}
+		}
 
-            throw new System.ArgumentException("Can't find opposit direction.");
-        }
+		private bool ManageValueCost (int id, float valueUsed) {
+			float currentValue = idToValue[id];
+			if (currentValue >= 0) {
+				if (currentValue < valueUsed) {
+					RemoveEntityTail(idToFieldPos[id]);
+				}
+				
+				currentValue = (float)System.Math.Round((double)(currentValue - valueUsed), 6);
+				idToValue[id] = currentValue;
+			}
 
-        private Vector2Int CalcNewHeadPos (Vector2Int oldPos, MoveInfo.Direction dir) {
-            switch (dir) {
-                case MoveInfo.Direction.Up: return oldPos + Vector2Int.up;
-                case MoveInfo.Direction.Right: return oldPos + Vector2Int.right;
-                case MoveInfo.Direction.Down: return oldPos + Vector2Int.down;
-                case MoveInfo.Direction.Left: return oldPos + Vector2Int.left;
-            }
+			if (currentValue < 0) {
+				deadSnakes.Add(id);
+				removedEntities.Add(id);
+				idToFieldPos.Remove(id);
+				return false;
+			}
 
-            return oldPos;
-        }
+			return true;
+		}
 
-        private void UpdateTail (Vector2Int oldHeadPos, bool moveForward) {
-            bool hasTail = false;
+		private MoveInfo.Direction OppositDirection (MoveInfo.Direction dir) {
+			switch (dir) {
+				case MoveInfo.Direction.Up: return MoveInfo.Direction.Down;
+				case MoveInfo.Direction.Right: return MoveInfo.Direction.Left;
+				case MoveInfo.Direction.Down: return MoveInfo.Direction.Up;
+				case MoveInfo.Direction.Left: return MoveInfo.Direction.Right;
+			}
 
-            Vector2Int prevPos = new Vector2Int(-1, -1);
-            Vector2Int curPos = oldHeadPos;
+			throw new System.ArgumentException("Can't find opposit direction.");
+		}
 
-            while (true) {
-                field[curPos.x, curPos.y].frameOfLastUpdate = curFrame;
-                int nextPosIndex = field[curPos.x, curPos.y].prevNeighborPos;
+		private Vector2Int CalcNewHeadPos (Vector2Int oldPos, MoveInfo.Direction dir) {
+			switch (dir) {
+				case MoveInfo.Direction.Up: return oldPos + Vector2Int.up;
+				case MoveInfo.Direction.Right: return oldPos + Vector2Int.right;
+				case MoveInfo.Direction.Down: return oldPos + Vector2Int.down;
+				case MoveInfo.Direction.Left: return oldPos + Vector2Int.left;
+			}
 
-                if (nextPosIndex == -1) {
-                    if (!moveForward) break;
+			return oldPos;
+		}
 
-                    if (hasTail) {
-                        field[prevPos.x, prevPos.y].prevNeighborPos = -1;
-                    }
+		private void UpdateTail (Vector2Int oldHeadPos, bool moveForward) {
+			bool hasTail = false;
 
-                    field[curPos.x, curPos.y] = default(FieldItem);
-                    break;
-                }
+			Vector2Int prevPos = new Vector2Int(-1, -1);
+			Vector2Int curPos = oldHeadPos;
 
-                hasTail = true;
-                prevPos = curPos;
-                curPos = new Vector2Int(nextPosIndex%width, nextPosIndex/width);
-            }
-        }
+			while (true) {
+				field[curPos.x, curPos.y].frameOfLastUpdate = curFrame;
+				int nextPosIndex = field[curPos.x, curPos.y].prevNeighborPos;
+
+				if (nextPosIndex == -1) {
+					if (!moveForward) break;
+
+					if (hasTail) {
+						field[prevPos.x, prevPos.y].prevNeighborPos = -1;
+					}
+
+					field[curPos.x, curPos.y] = default(FieldItem);
+					break;
+				}
+
+				hasTail = true;
+				prevPos = curPos;
+				curPos = new Vector2Int(nextPosIndex%width, nextPosIndex/width);
+			}
+		}
 
 #endregion
 
 #region Snake creation
 
-        private Vector2Int AddNewSnake (int id) {
-            SnakeInfo info = FindSnakePort(id).GetSnakeInfo(id);
-            
-            idToCurLength.Add(id, info.maxLength);
-            idToValue.Add(id, info.maxValue);
-            Vector2Int pos = AddNewSnakeToField(id, info.maxLength);
+		private Vector2Int AddNewSnake (int id) {
+			SnakeInfo info = FindSnakePort(id).GetSnakeInfo(id);
+			
+			idToCurLength.Add(id, info.maxLength);
+			idToValue.Add(id, info.maxValue);
+			Vector2Int pos = AddNewSnakeToField(id, info.maxLength);
 
-            idToFieldPos.Add(id, pos);
-            idToSnakeInfo.Add(id, info);
+			idToFieldPos.Add(id, pos);
+			idToSnakeInfo.Add(id, info);
 
-            return pos;
-        }
+			return pos;
+		}
 
-        private Vector2Int AddNewSnakeToField (int snakeId, int targetLength) {
-            var alteredCells = new HashSet<int>();
+		private Vector2Int AddNewSnakeToField (int snakeId, int targetLength) {
+			var alteredCells = new HashSet<int>();
 
-            while (true) {
-                int prevPos = -1;
+			while (true) {
+				int prevPos = -1;
 
-                bool vertPlacement = Random.value > 0.5f;
-                bool invertedPlacement = Random.value > 0.5f;
-                MoveInfo.Direction dir = ChooseDirection(vertPlacement, invertedPlacement);
+				bool vertPlacement = Random.value > 0.5f;
+				bool invertedPlacement = Random.value > 0.5f;
+				MoveInfo.Direction dir = ChooseDirection(vertPlacement, invertedPlacement);
 
-                int curX = 0;
-                int curY = 0;
+				int curX = 0;
+				int curY = 0;
 
-                if (invertedPlacement) {
-                    curX = Random.Range(((vertPlacement)? 0: targetLength)+SPAWN_BORDER, width-SPAWN_BORDER);
-                    curY = Random.Range(((vertPlacement)? targetLength: 0)+SPAWN_BORDER, height-SPAWN_BORDER);
-                } else {
-                    curX = Random.Range(SPAWN_BORDER, width-SPAWN_BORDER-((vertPlacement)? 0: targetLength));
-                    curY = Random.Range(SPAWN_BORDER, height-SPAWN_BORDER-((vertPlacement)? targetLength: 0));
-                }
-                
-                int curLength = 0;
-                alteredCells.Clear();
-                while (curLength < targetLength) {
-                    if (width <= curX || height <= curY || curX < 0 || curY < 0) break;
-                    if (field[curX, curY].type != FieldItem.ItemType.None) break;
-                    int curPos = curY*width + curX;
+				if (invertedPlacement) {
+					curX = Random.Range(((vertPlacement)? 0: targetLength)+SPAWN_BORDER, width-SPAWN_BORDER);
+					curY = Random.Range(((vertPlacement)? targetLength: 0)+SPAWN_BORDER, height-SPAWN_BORDER);
+				} else {
+					curX = Random.Range(SPAWN_BORDER, width-SPAWN_BORDER-((vertPlacement)? 0: targetLength));
+					curY = Random.Range(SPAWN_BORDER, height-SPAWN_BORDER-((vertPlacement)? targetLength: 0));
+				}
+				
+				int curLength = 0;
+				alteredCells.Clear();
+				while (curLength < targetLength) {
+					if (width <= curX || height <= curY || curX < 0 || curY < 0) break;
+					if (field[curX, curY].type != FieldItem.ItemType.None) break;
+					int curPos = curY*width + curX;
 
-                    alteredCells.Add(curPos);
-                    field[curX, curY] = new FieldItem() {
-                        id = snakeId,
-                        frameOfLastUpdate = curFrame - 1,
-                        prevNeighborPos = prevPos,
-                        flags = (curLength==targetLength-1)? (byte)FieldItem.Flag.Head: (byte)0,
-                        type = FieldItem.ItemType.Snake,
-                        dir = dir
-                    };
+					alteredCells.Add(curPos);
+					field[curX, curY] = new FieldItem() {
+						id = snakeId,
+						frameOfLastUpdate = curFrame - 1,
+						prevNeighborPos = prevPos,
+						flags = (curLength==targetLength-1)? (byte)FieldItem.Flag.Head: (byte)0,
+						type = FieldItem.ItemType.Snake,
+						dir = dir
+					};
 
-                    ++curLength;
-                    if (curLength == targetLength) break;
+					++curLength;
+					if (curLength == targetLength) break;
 
-                    prevPos = curPos;
-                    curX = (vertPlacement)? curX : (curX + ((invertedPlacement)? -1: 1));
-                    curY = (vertPlacement)? (curY + ((invertedPlacement)? -1: 1)) : curY;                    
-                }
+					prevPos = curPos;
+					curX = (vertPlacement)? curX : (curX + ((invertedPlacement)? -1: 1));
+					curY = (vertPlacement)? (curY + ((invertedPlacement)? -1: 1)) : curY;                    
+				}
 
-                if (curLength == targetLength) {
-                    return new Vector2Int(curX, curY);
-                } else {
-                    foreach (var cellPos in alteredCells) {
-                        field[cellPos%width, cellPos/width] = default(FieldItem);
-                    }
-                }
-            }
-        }
+				if (curLength == targetLength) {
+					return new Vector2Int(curX, curY);
+				} else {
+					foreach (var cellPos in alteredCells) {
+						field[cellPos%width, cellPos/width] = default(FieldItem);
+					}
+				}
+			}
+		}
 
-        private MoveInfo.Direction ChooseDirection (bool vert, bool inv) {
-            if (vert && !inv) {
-                return MoveInfo.Direction.Up;
-            } else if (vert && inv) {
-                return MoveInfo.Direction.Down;
-            } else if (!vert && !inv) {
-                return MoveInfo.Direction.Right;
-            } else if (!vert && inv) {
-                return MoveInfo.Direction.Left;
-            }
+		private MoveInfo.Direction ChooseDirection (bool vert, bool inv) {
+			if (vert && !inv) {
+				return MoveInfo.Direction.Up;
+			} else if (vert && inv) {
+				return MoveInfo.Direction.Down;
+			} else if (!vert && !inv) {
+				return MoveInfo.Direction.Right;
+			} else if (!vert && inv) {
+				return MoveInfo.Direction.Left;
+			}
 
-            return MoveInfo.Direction.None;
-        }
+			return MoveInfo.Direction.None;
+		}
 
 #endregion
 
-        private IPlayersPort FindSnakePort (int id) {
-            foreach (var port in playersPorts) {
-                if (port.GetSnakeInfo(id) != null) {
-                    return port;
-                }
-            }
-            
-            return null;
-        }
+		private IPlayersPort FindSnakePort (int id) {
+			foreach (var port in playersPorts) {
+				if (port.GetSnakeInfo(id) != null) {
+					return port;
+				}
+			}
+			
+			return null;
+		}
 
-        public int GetNextId () {
-            return nextEntityId++;
-        }
-    }
+		public int GetNextId () {
+			return nextEntityId++;
+		}
+	}
 }
