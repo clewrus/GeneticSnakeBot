@@ -1,47 +1,47 @@
 ﻿Shader "SnakeTiles/TransparentShader"
 {
-    Properties
-    {
-    }
+	Properties
+	{
+	}
 
-    SubShader
-    {
-        Tags { "RenderType"="Transparent" }
+	SubShader
+	{
+		Tags { "RenderType"="Transparent" }
 
-        Pass
-        {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
+		Pass
+		{
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
 
-            #include "UnityCG.cginc"
+			#include "UnityCG.cginc"
 
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-            };
+			struct appdata
+			{
+				float4 vertex : POSITION;
+				float2 uv : TEXCOORD0;
+			};
 
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
-            };
+			struct v2f
+			{
+				float2 uv : TEXCOORD0;
+				float4 vertex : SV_POSITION;
+			};
 
-            v2f vert (appdata v)
-            {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = v.uv;
-                return o;
-            }
+			v2f vert (appdata v)
+			{
+				v2f o;
+				o.vertex = UnityObjectToClipPos(v.vertex);
+				o.uv = v.uv;
+				return o;
+			}
 
-            fixed4 frag (v2f i) : SV_Target
-            {
-                clip(-1);
-                return 0;
-            }
-            ENDCG
-        }
-    }
+			fixed4 frag (v2f i) : SV_Target
+			{
+				clip(-1);
+				return 0;
+			}
+			ENDCG
+		}
+	}
 }

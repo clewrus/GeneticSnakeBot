@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 
 namespace Simulator {
-    public interface IPlayer {
-        MoveInfo MakeMove (Projection playerInput);
-        void HandleMoveResult (MoveResult result);
+	public interface IPlayer {
+		MoveInfo MakeMove (Projection playerInput);
+		void HandleMoveResult (MoveResult result);
 
-        SnakeInfo GetSnakeInfo ();
-    }
+		SnakeInfo GetSnakeInfo ();
+	}
 }
