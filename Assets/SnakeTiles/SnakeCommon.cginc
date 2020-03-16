@@ -16,9 +16,9 @@
 	float3 SquamaTexture (float2 uv, float R) {
 
 		float2 noiseCords = float2(R * asin(clamp((uv.x) / R, -1, 1)), uv.y);
-		float3 noise = VoronoiNoise(noiseCords, 10, 228);
+		float4 noise = VoronoiNoise(noiseCords, 10, 228);
 
-		return noise;
+		return noise.xzw;
 	}
 	
 

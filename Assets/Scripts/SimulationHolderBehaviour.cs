@@ -1,5 +1,6 @@
 
 using System.Collections;
+using Assets.SnakeTiles;
 using Simulator;
 using UnityEngine;
 using Visualization;
@@ -13,9 +14,10 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 
 	private Simulation curSimulation;
 	private IPlayersPort port;
-	
 
 	private void Start () {
+		var a = (new WallOrientation(false, true, true, true, true, true, false, true)).Value;
+
 		curSimulation = new Simulation(width, height);
 		port = new NormalPlayersPort();
 		curSimulation.AddPlayerPort(port);

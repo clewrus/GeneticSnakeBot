@@ -11,32 +11,43 @@ static float2 Rand2 (float2 pos, float seed) {
 	return frac(pos);
 }
 
-float3 VoronoiNoise (float2 uv, float2 cellSize, float seed) {
+float4 VoronoiNoise (float2 uv, float2 cellSize, float seed) {
 	uv *= cellSize;
 	float2 cellPos = floor(uv);
-	float2 selfPos = uv - cellPos;
+	float2 curPoint = cellPos + Rand2(cellPos, seed);
 
-	float2 dotPos = Rand2(cellPos, seed);
-	float minDist = 10;
-	float2 closeCell;
+	float distToClosePoint = 10000;
+	float distToNextPoint;
+	
+	float2 closePoint;
+	float2 nextPoint;
 
 	[unroll]
 	for (float x = -1; x <= 1; x++) {
 		[unroll]
 		for (float y = -1; y <= 1; y++) {
 			float2 targetCell = cellPos + float2(x, y);
-			float2 toNeighborDot = -selfPos + float2(x, y) + Rand2(targetCell, seed);
+			float2 targetPoint = targetCell + Rand2(targetCell, seed);
 
-			float curLength = length(toNeighborDot);
-			if (curLength < minDist) {
-				minDist = curLength;
-				closeCell = targetCell;
+			float curLength = length(targetPoint - uv);
+			if (curLength < distToClosePoint) {
+				nextPoint = closePoint;
+				distToNextPoint = distToClosePoint;
+
+				closePoint = targetPoint;
+				distToClosePoint = curLength;
+			} else if (curLength < distToNextPoint) {
+				nextPoint = targetPoint;
+				distToNextPoint = curLength;
 			}
 		}
 	}
 
-	float2 rnd = Rand2(closeCell, seed);
-	return float3(minDist, rnd.x, rnd.y);
+	float2 N = closePoint - nextPoint;
+	float d = (dot(uv, N) + 0.5 * (dot(nextPoint, nextPoint) - dot(closePoint, closePoint))) / length(N);
+
+	float2 rnd = Rand2(closePoint, seed);
+	return float4(distToClosePoint, abs(d), rnd.x, rnd.y);
 }
 
 #endif

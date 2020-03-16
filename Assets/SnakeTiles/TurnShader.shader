@@ -31,7 +31,6 @@
 			#pragma fragment frag
 
 			#include "UnityCG.cginc"
-			#include "VoronoiNoise.cginc"
 
 			struct appdata
 			{
