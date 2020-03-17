@@ -154,7 +154,9 @@
 				
 				i.worldPos.xy += (0 < Y && Y < R) * worldUp * (R * asin(clamp(Y/R, -1, 1)) - Y);
 				float4 noise = VoronoiNoise(i.worldPos.xy, _CellSize, 228);
-				fixed3 cellColor = lerp(_Color1.rgb, _Color2.rgb, noise.z) * pow(clamp((1 - Y/R), 0, 1), _EdgeShade);
+				fixed3 cellColor = lerp(_Color1.rgb, _Color2.rgb, noise.z);
+
+				cellColor *= max(type == 3, pow(clamp((1 - Y / R), 0, 1), _EdgeShade));
 
 				cellColor *= pow(noise.y, _BorderWidth);
 				return mask * fixed4(cellColor, 1);

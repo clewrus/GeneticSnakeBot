@@ -16,7 +16,7 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 	private IPlayersPort port;
 
 	private void Start () {
-		curSimulation = new Simulation(width, height);
+		curSimulation = new Simulation(width, height, 228);
 		port = new NormalPlayersPort();
 		curSimulation.AddPlayerPort(port);
 

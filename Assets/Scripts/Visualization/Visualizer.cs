@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Visualizable;
 using Simulator;
 using UnityEngine;
+using Assets.SnakeTiles;
 
 namespace Visualization {
 	public class Visualizer : MonoBehaviour, ISimulationObserver {
@@ -187,6 +188,14 @@ namespace Visualization {
 							foodPlacement.AddLast(fieldItemPos);
 							entitysTiles.Add(fieldItem.id, foodPlacement);
 						} break;
+
+						case FieldItem.ItemType.Wall: {
+							DrawWall(simulation, fieldItemPos);
+
+							var wallPlacement = new LinkedList<Vector2Int>();
+							wallPlacement.AddLast(fieldItemPos);
+							entitysTiles.Add(fieldItem.id, wallPlacement);
+						} break;
 					}
 				}
 			}
@@ -217,6 +226,28 @@ namespace Visualization {
 		private void DrawFood (Vector2Int foodPos) {
 			var nwFoodMaterial = new Material(shaders.foodShader);
 			field.SetTileMaterial(foodPos, nwFoodMaterial);
+		}
+
+		private void DrawWall (IVisualizable simulation, Vector2Int pos) {
+			Predicate<Vector2Int> IsWall = (p => {
+				if (p.x < 0 || simulation.Width <= p.x || p.y < 0 || simulation.Height <= p.y) return true;
+				return simulation.Field[p.x, p.y].type == FieldItem.ItemType.Wall;
+			});
+
+			var nwWallMaterial = new Material(shaders.wallShader);
+			var curOrientation = new WallOrientation(
+				IsWall(pos + new Vector2Int(-1, 1)),
+				IsWall(pos + new Vector2Int( 0, 1)),
+				IsWall(pos + new Vector2Int( 1, 1)),
+				IsWall(pos + new Vector2Int( 1, 0)),
+				IsWall(pos + new Vector2Int( 1,-1)),
+				IsWall(pos + new Vector2Int( 0,-1)),
+				IsWall(pos + new Vector2Int(-1,-1)),
+				IsWall(pos + new Vector2Int(-1, 0))
+			);
+
+			nwWallMaterial.SetInt("_Orientation", (int)curOrientation.Value);
+			field.SetTileMaterial(pos, nwWallMaterial);
 		}
 
 		private void DrawSnake (IVisualizable sim, FieldItem fieldItem, Vector2Int pos) {
@@ -297,5 +328,6 @@ namespace Visualization {
 		public Shader headShader;
 
 		public Shader foodShader;
+		public Shader wallShader;
 	}
 }

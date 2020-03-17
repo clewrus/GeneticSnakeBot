@@ -9,6 +9,7 @@ namespace Simulator {
 		private List<ISimulationObserver> observers;
 
 		public FieldProjector fieldProjector { get; private set; }
+		public FieldGenerator fieldGenerator { get; private set; }
 		public List<IPlayersPort> playersPorts { get; private set; }
 
 		private HashSet<int> deadSnakes;
@@ -48,9 +49,11 @@ namespace Simulator {
 		private HashSet<int> removedEntities = new HashSet<int>();
 #endregion
 
-		public Simulation (int width, int height) {
+		public Simulation (int width, int height, int fieldGenerationSeed) {
+			this.fieldGenerator = new FieldGenerator(fieldGenerationSeed, width, height, GetNextId);
+			field = fieldGenerator.GenerateField();
+
 			observers = new List<ISimulationObserver>();
-			field = new FieldItem[width, height];
 			rand = new System.Random();
 
 			this.width = width;
