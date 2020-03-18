@@ -8,7 +8,7 @@
 		[Space]
 		_CellSize ("CellSize parameter of Voronoi noise.", Float) = 10
 		_BorderWidth ("Width of borders", Range(0.1, 2)) = 0.25
-		_EdgeShade ("Shade on the edges", Range(0.01, 2)) = 0.15
+		_EdgeShade ("Shade on the edges", Range(0.01, 2)) = 0.3
 		_WallRoundness ("Roundness of wall edge", Range(0, 1)) = 1
 		[Space]
 		_Color1 ("The first key color", Color) = (1, 0.45, 0.05, 1)
@@ -154,8 +154,8 @@
 				
 				i.worldPos.xy += (0 < Y && Y < R) * worldUp * (R * asin(clamp(Y/R, -1, 1)) - Y);
 				float4 noise = VoronoiNoise(i.worldPos.xy, _CellSize, 228);
-				fixed3 cellColor = lerp(_Color1.rgb, _Color2.rgb, noise.z) * pow(clamp((1 - Y/R), 0, 1), _EdgeShade);
 
+				fixed3 cellColor = lerp(_Color1.rgb, _Color2.rgb, noise.z);
 				cellColor *= max(type == 3, pow(clamp((1 - Y / R), 0, 1), _EdgeShade));
 
 				cellColor *= pow(noise.y, _BorderWidth);

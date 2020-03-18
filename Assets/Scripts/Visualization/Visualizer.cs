@@ -13,10 +13,12 @@ namespace Visualization {
 		private IVisualizable lastSimulation;
 		private Dictionary<int, LinkedList<Vector2Int>> entitysTiles;
 
+		private Material commonFoodMaterial;
 		public SnakeShaders shaders;
 
 		private void Awake () {
 			field = GetComponent<SnakeField>();
+			commonFoodMaterial = new Material(shaders.foodShader);
 		}
 
 		public void SimulationUpdateHandler (IVisualizable simulation, HashSet<(int id, Vector2Int? pos)> entities) {
@@ -81,7 +83,7 @@ namespace Visualization {
 								field.ClearTileMaterial(p);
 							}
 						} else {
-							field.SetTileMaterial(p, new Material(shaders.foodShader));
+							field.SetTileMaterial(p, commonFoodMaterial);
 						}
 					}
 				);
@@ -224,14 +226,14 @@ namespace Visualization {
 		}
 
 		private void DrawFood (Vector2Int foodPos) {
-			var nwFoodMaterial = new Material(shaders.foodShader);
-			field.SetTileMaterial(foodPos, nwFoodMaterial);
+			field.SetTileMaterial(foodPos, commonFoodMaterial);
 		}
 
 		private void DrawWall (IVisualizable simulation, Vector2Int pos) {
+			var simulationField = simulation.Field;
 			Predicate<Vector2Int> IsWall = (p => {
 				if (p.x < 0 || simulation.Width <= p.x || p.y < 0 || simulation.Height <= p.y) return true;
-				return simulation.Field[p.x, p.y].type == FieldItem.ItemType.Wall;
+				return simulationField[p.x, p.y].type == FieldItem.ItemType.Wall;
 			});
 
 			var nwWallMaterial = new Material(shaders.wallShader);

@@ -28,13 +28,15 @@
 			struct v2f
 			{
 				float2 uv : TEXCOORD0;
+				float2 worldPos : TEXCOORD1;
 				float4 vertex : SV_POSITION;
 			};
 
-			v2f vert (appdata v)
+			v2f vert(appdata v)
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
+				o.worldPos = mul(unity_ObjectToWorld, v.vertex);
 				o.uv = v.uv;
 				return o;
 			}
@@ -45,12 +47,12 @@
 			float _FluctuationRate;
 			fixed4 _ReferenceColor;
 
-			float2 calcLocalOffset(float2 uv) {
+			float2 calcLocalOffset(float2 uv, float seed) {
 				float3 arg = float3(uv, frac(_FluctuationRate * _Time.x));
 
-				setSeed(23.567);
+				setSeed(10.2 + 13.567 * seed);
 				float dx = noise3D(arg);
-				setSeed(34.234);
+				setSeed(11.3 + 24.234 * seed);
 				float dy = noise3D(arg);
 
 				float2 offset = 2 * float2(dx, dy) - 1;
@@ -61,11 +63,15 @@
 				float2 uv = 2 * (i.uv - 0.5);
 				fixed4 col = _ReferenceColor;
 
+				float2 seed2 = floor(i.worldPos);
+				seed2.x = frac(dot(seed2, float2(228.322, 322.228)));
+				seed2.y = frac(dot(seed2, float2(322.228, 228.322)));
+				float seed = frac(seed2.x + seed2.y);
 				
-				float waveValue = cos(8 * _SinTime.y);
+				float waveValue = cos(8 * _SinTime.y + 2*3.1416*seed);
 				float borderR = _MaxR * (0.95 + 0.05 * waveValue);
 
-				float2 offset = calcLocalOffset(i.uv);
+				float2 offset = calcLocalOffset(i.uv, seed);
 				offset *= max(0, borderR - length(uv));
 				float R = length(uv + offset);
 
