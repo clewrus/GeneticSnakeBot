@@ -215,8 +215,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ba69256c6aed6449baaf6d71ed9b6c8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  width: 10
-  height: 10
+  width: 20
+  height: 20
   observers:
   - {fileID: 1878758457}
 --- !u!4 &504720670

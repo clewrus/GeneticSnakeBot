@@ -165,6 +165,7 @@ namespace Visualization {
 			entitysTiles = new Dictionary<int, LinkedList<Vector2Int>>();
 
 			field.ClearTilesMaterials();
+			DrawSurroundingWalls(simulation);
 
 			var snakeHeads = new List<(FieldItem item, Vector2Int pos)>(32);
 			for (int x = 0; x < simulation.Width; ++x) {
@@ -207,6 +208,24 @@ namespace Visualization {
 			}
 		}
 
+		private void DrawSurroundingWalls (IVisualizable simulation) {
+			for (int i = -1; i < simulation.Width; i++) {
+				DrawWall(simulation, new Vector2Int(i, -1));
+			}
+
+			for (int i = -1; i < simulation.Height; i++) {
+				DrawWall(simulation, new Vector2Int(simulation.Width, i));
+			}
+
+			for (int i = simulation.Width; -1 < i; i--) {
+				DrawWall(simulation, new Vector2Int(i, simulation.Height));
+			}
+
+			for (int i = simulation.Height; -1 < i; i--) {
+				DrawWall(simulation, new Vector2Int(-1, i));
+			}
+		}
+
 		private LinkedList<Vector2Int> FindSnakesPlacement (IVisualizable simulation, Vector2Int headPos) {
 			Debug.Assert((simulation.Field[headPos.x, headPos.y].flags & (byte)FieldItem.Flag.Head) != 0, "Head tile expected.");
 
@@ -232,7 +251,9 @@ namespace Visualization {
 		private void DrawWall (IVisualizable simulation, Vector2Int pos) {
 			var simulationField = simulation.Field;
 			Predicate<Vector2Int> IsWall = (p => {
-				if (p.x < 0 || simulation.Width <= p.x || p.y < 0 || simulation.Height <= p.y) return true;
+				if (p.x < -1 || simulation.Width < p.x || p.y < -1 || simulation.Height < p.y) return false;
+				if (p.x == -1 || p.x == simulation.Width || p.y == -1 || p.y == simulation.Height) return true;
+				
 				return simulationField[p.x, p.y].type == FieldItem.ItemType.Wall;
 			});
 

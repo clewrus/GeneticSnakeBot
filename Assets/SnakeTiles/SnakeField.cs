@@ -45,6 +45,8 @@ namespace Visualization {
 
 #region Public
 		public void ClearTileMaterial (Vector2Int tilePosition) {
+			tilePosition += Vector2Int.one;
+
 			if (!ContainsIndex(tilePosition)) return;
 
 			var targetTile = instancedTiles[tilePosition.x, tilePosition.y];
@@ -65,6 +67,8 @@ namespace Visualization {
 		}
 
 		public Material GetTileMaterial (Vector2Int pos) {
+			pos += Vector2Int.one;
+
 			if (!ContainsIndex(pos)) {
 				return null;
 			}
@@ -78,6 +82,8 @@ namespace Visualization {
 		}
 
 		public void SetTileMaterial (Vector2Int pos, Material mat) {
+			pos += Vector2Int.one;
+
 			if (!ContainsIndex(pos)) return;
 			if (instancedTiles[pos.x, pos.y] == null) return;
 
@@ -88,6 +94,8 @@ namespace Visualization {
 		}
 
 		public void SetTileRotation (Vector2Int pos, float angle) {
+			pos += Vector2Int.one;
+
 			if (!ContainsIndex(pos)) return;
 			if (instancedTiles[pos.x, pos.y] == null) return;
 
@@ -108,14 +116,14 @@ namespace Visualization {
 				Destroy(tile);
 			}
 
-			instancedTiles = new GameObject[FieldSize.x, FieldSize.y];
+			instancedTiles = new GameObject[FieldSize.x + 2, FieldSize.y + 2];
 
 			FillField();
 		}
 
 		private void FillField () {
-			for (int i = 0; i < FieldSize.x; i++) {
-				for (int j = 0; j < FieldSize.y; j++) {
+			for (int i = 0; i < instancedTiles.GetLength(0); i++) {
+				for (int j = 0; j < instancedTiles.GetLength(1); j++) {
 					var nwTile = GameObject.Instantiate(tilePrefab, this.transform, false);
 					instancedTiles[i, j] = nwTile;
 
