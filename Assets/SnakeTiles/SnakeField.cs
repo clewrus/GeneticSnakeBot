@@ -19,7 +19,7 @@ namespace Visualization {
 #region Fields
 		[SerializeField] private GameObject tilePrefab = null;
 
-		private Vector2Int m_fieldSize = default(Vector2Int);
+		private Vector2Int m_fieldSize = default;
 		public Vector2Int FieldSize {
 			get => m_fieldSize;
 			set {
@@ -40,7 +40,11 @@ namespace Visualization {
 		private GameObject[,] instancedTiles = new GameObject[0,0];
 
 		[Space]
-		[SerializeField] private Shader transparentShader= null; 
+		[SerializeField] private Shader transparentShader= null;
+		private Material transparentTileMaterial = null;
+
+		[SerializeField] private Material backgroundMaterial = null;
+		private GameObject background = null;
 #endregion
 
 #region Public
@@ -55,13 +59,20 @@ namespace Visualization {
 			var targetMeshRenderer = instancedTiles[tilePosition.x, tilePosition.y].GetComponent<MeshRenderer>();
 			if (targetMeshRenderer == null) return;
 
-			targetMeshRenderer.material = new Material(transparentShader);
+			if (transparentTileMaterial == null) {
+				transparentTileMaterial = (transparentShader == null) ? null : new Material(transparentShader);
+			}
+			targetMeshRenderer.material = transparentTileMaterial;
 		}
 
 		public void ClearTilesMaterials () {
+			if (transparentTileMaterial == null) {
+				transparentTileMaterial = (transparentShader == null) ? null : new Material(transparentShader);
+			}
+
 			foreach (var tileObj in instancedTiles) {
 				if (tileObj == null || tileObj.GetComponent<MeshRenderer>() == null) continue;
-				tileObj.GetComponent<MeshRenderer>().material = new Material(transparentShader);
+				tileObj.GetComponent<MeshRenderer>().material = transparentTileMaterial;
 				tileObj.transform.eulerAngles = Vector3.zero;
 			}
 		}
@@ -117,8 +128,9 @@ namespace Visualization {
 			}
 
 			instancedTiles = new GameObject[FieldSize.x + 2, FieldSize.y + 2];
-
 			FillField();
+
+			UpdateBackground();
 		}
 
 		private void FillField () {
@@ -139,6 +151,23 @@ namespace Visualization {
 			offset += (TileSize / 2f) * Vector2.one;
 
 			tile.transform.localPosition = TileSize * (new Vector2(i, j)) + offset;
+		}
+
+		private void UpdateBackground () {
+			if (background == null) {
+				background = GameObject.Instantiate(tilePrefab, this.transform, false);
+				background.transform.localPosition = new Vector3(1, 1, 1);
+				background.name = "Background";
+				background.transform.SetSiblingIndex(0);
+
+				var backgroundRenderer = background.GetComponent<MeshRenderer>();
+				if (backgroundRenderer != null) {
+					backgroundRenderer.material = backgroundMaterial;
+				}
+			}
+
+			Vector2 backgroundSize = FieldSize + Vector2Int.one;
+			background.transform.localScale = (Vector3)(TileSize * backgroundSize) + Vector3.forward;
 		}
 		#endregion
 	}

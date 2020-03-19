@@ -1,4 +1,4 @@
-﻿Shader "SnakeTiles/WallShader"
+﻿Shader "SurroundingTiles/WallShader"
 {
 	Properties {
 		_Orientation ("Codded wall orientation", Int) = 30292
