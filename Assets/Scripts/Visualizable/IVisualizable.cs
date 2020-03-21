@@ -13,6 +13,8 @@ namespace Visualizable {
 
 		FieldItem[,] Field { get; }
 
+		SnakeInfo GetSnakeInfo (int id);
+
 		void AttachObserver (ISimulationObserver nwObserver);
 		void RemoveObserver (ISimulationObserver oldObserver);
 		void MakeStep ();

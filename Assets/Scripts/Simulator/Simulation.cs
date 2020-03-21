@@ -45,7 +45,7 @@ namespace Simulator {
 		private List<MoveInfo> curMovesListBuffer = new List<MoveInfo>();
 		private Dictionary<int, MoveInfo> curMovesDictBuffer = new Dictionary<int, MoveInfo>();
 
-		private HashSet<int> updatedEntities = new HashSet<int>();
+		private HashSet<(int x, int y)> updatedPositions = new HashSet<(int x, int y)>();
 		private HashSet<int> removedEntities = new HashSet<int>();
 #endregion
 
@@ -60,6 +60,8 @@ namespace Simulator {
 			this.height = height;
 
 			fieldProjector = new FieldProjector(field);
+			fieldProjector.UpdateAtPositions(Vector2IntToTuple(idToFieldPos.Values));
+
 			playersPorts = new List<IPlayersPort>();
 
 			deadSnakes = new HashSet<int>();
@@ -78,6 +80,14 @@ namespace Simulator {
 			nwPort.GetNextId = this.GetNextId;
 		}
 
+		public SnakeInfo GetSnakeInfo (int id) {
+			if (idToSnakeInfo.TryGetValue(id, out SnakeInfo requestedInfo)) {
+				return requestedInfo;
+			}
+
+			return null;
+		}
+
 		public void AttachObserver (ISimulationObserver nwObserver) {
 			if (observers.Contains(nwObserver)) return;
 			observers.Add(nwObserver);
@@ -91,6 +101,8 @@ namespace Simulator {
 		public void MakeStep () {
 			LoadMovesToDictBuffer();
 			MakeSimulationStep();
+
+			fieldProjector.UpdateAtPositions(updatedPositions);
 			SendStepResultsToPorts();
 
 			UpdateObservers();
@@ -136,29 +148,19 @@ namespace Simulator {
 
 		private void UpdateObservers () {
 			if (observers.Count == 0) return;
-
-			var infoForSending = new HashSet<(int, Vector2Int?)>();
-			foreach (var entity in updatedEntities) {
-				Vector2Int? entityPos = null;
-				if (idToFieldPos.TryGetValue(entity, out Vector2Int realPosition)) {
-					entityPos = realPosition;
-				}
-				infoForSending.Add((entity, entityPos));
-			}
 			
 			foreach (var observer in observers) {
-				observer.SimulationUpdateHandler(this, infoForSending);
+				observer.SimulationUpdateHandler(this as IVisualizable, updatedPositions);
 			}
 		}
 
 		private void MakeSimulationStep () {
 			curFrame += 1;
-			updatedEntities.Clear();
+			updatedPositions.Clear();
 			removedEntities.Clear();
 
-			foreach (var move in curMovesDictBuffer) {
-				UpdateSnake(move.Key, move.Value);
-				updatedEntities.Add(move.Key);
+			foreach (var id_moveInfo in curMovesDictBuffer) {
+				UpdateSnake(id_moveInfo.Key, id_moveInfo.Value);
 			}
 
 			ScatterFood();
@@ -174,17 +176,16 @@ namespace Simulator {
 				if (field[nwPos.x, nwPos.y].type != FieldItem.ItemType.None) continue;
 
 				int nwId = GetNextId();
-				updatedEntities.Add(nwId);
 				idToFieldPos.Add(nwId, nwPos);
 
-				field[nwPos.x, nwPos.y] = new FieldItem {
+				UpdateFieldItem(nwPos.x, nwPos.y, new FieldItem {
 					id = nwId,
 					frameOfLastUpdate = curFrame,
 					prevNeighborPos = -1,
 					value = SPAWNED_FOOD_VALUE,
 
 					type = FieldItem.ItemType.Food,
-				};
+				});
 			}
 		}
 
@@ -242,7 +243,7 @@ namespace Simulator {
 			if (hitted.type == FieldItem.ItemType.None) {
 				unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
 				UpdateTail(oldPos, true);
-				field[nwPos.x, nwPos.y] = nwItem;
+				UpdateFieldItem(nwPos.x, nwPos.y, nwItem);
 
 			} else if (hitted.type == FieldItem.ItemType.Food) {
 				HandleMoveOnFood(oldPos, nwPos, hitted, nwItem);
@@ -253,8 +254,6 @@ namespace Simulator {
 		}
 
 		private void HandleMoveOnFood (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
-			updatedEntities.Add(hitted.id);
-
 			removedEntities.Add(hitted.id);
 			idToFieldPos.Remove(hitted.id);
 
@@ -274,7 +273,7 @@ namespace Simulator {
 				}
 			}
 
-			field[nwPos.x, nwPos.y] = nwItem;
+			UpdateFieldItem(nwPos.x, nwPos.y, nwItem);
 		}
 
 		private void HandleMoveOnSnake (Vector2Int oldPos, Vector2Int nwPos, FieldItem nwItem) {
@@ -347,18 +346,16 @@ namespace Simulator {
 			idToValue[hitted.id] -= totalValueDelta;
 			foreach (var nwPos in foodPos) {
 				var nwId = GetNextId();
-				
-				updatedEntities.Add(nwId);
 				idToFieldPos.Add(nwId, nwPos);
 
-				field[nwPos.x, nwPos.y] = new FieldItem{
+				UpdateFieldItem(nwPos.x, nwPos.y, new FieldItem{
 					id = nwId,
 					frameOfLastUpdate = curFrame,
 					prevNeighborPos = -1,
 
 					value = foodVal * 0.8f,
 					type = FieldItem.ItemType.Food
-				};
+				});
 			}
 		}
 
@@ -377,7 +374,7 @@ namespace Simulator {
 		private void RemoveEntityTail (Vector2Int tarPos, System.Action<Vector2Int> onRemove=null) {
 			var tarItem = field[tarPos.x, tarPos.y];
 
-			field[tarPos.x, tarPos.y] = default(FieldItem);
+			UpdateFieldItem(tarPos.x, tarPos.y, default);
 			onRemove?.Invoke(tarPos);
 
 			var nxtPos = tarItem.prevNeighborPos;
@@ -386,7 +383,7 @@ namespace Simulator {
 				tarPos = new Vector2Int(nxtPos % width, nxtPos / width);
 				tarItem = field[tarPos.x, tarPos.y];
 
-				field[tarPos.x, tarPos.y] = default(FieldItem);
+				UpdateFieldItem(tarPos.x, tarPos.y, default);
 				onRemove?.Invoke(tarPos);
 
 				nxtPos = tarItem.prevNeighborPos;
@@ -453,7 +450,7 @@ namespace Simulator {
 						field[prevPos.x, prevPos.y].prevNeighborPos = -1;
 					}
 
-					field[curPos.x, curPos.y] = default(FieldItem);
+					UpdateFieldItem(curPos.x, curPos.y, default(FieldItem));
 					break;
 				}
 
@@ -509,14 +506,14 @@ namespace Simulator {
 					int curPos = curY*width + curX;
 
 					alteredCells.Add(curPos);
-					field[curX, curY] = new FieldItem() {
+					UpdateFieldItem(curX, curY, new FieldItem() {
 						id = snakeId,
 						frameOfLastUpdate = curFrame - 1,
 						prevNeighborPos = prevPos,
 						flags = (curLength==targetLength-1)? (byte)FieldItem.Flag.Head: (byte)0,
 						type = FieldItem.ItemType.Snake,
 						dir = dir
-					};
+					});
 
 					++curLength;
 					if (curLength == targetLength) break;
@@ -530,7 +527,7 @@ namespace Simulator {
 					return new Vector2Int(curX, curY);
 				} else {
 					foreach (var cellPos in alteredCells) {
-						field[cellPos%width, cellPos/width] = default(FieldItem);
+						UpdateFieldItem(cellPos%width, cellPos/width, default);
 					}
 				}
 			}
@@ -551,6 +548,17 @@ namespace Simulator {
 		}
 
 #endregion
+
+		private IEnumerable<(int x, int y)> Vector2IntToTuple (IEnumerable<Vector2Int> input) {
+			foreach (var vector in input) {
+				yield return (vector.x, vector.y);
+			}
+		}
+
+		private void UpdateFieldItem (int x, int y, FieldItem nwItem) {
+			field[x, y] = nwItem;
+			updatedPositions.Add((x, y));
+		}
 
 		private IPlayersPort FindSnakePort (int id) {
 			foreach (var port in playersPorts) {

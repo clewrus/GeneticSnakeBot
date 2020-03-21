@@ -16,6 +16,10 @@ namespace Simulator {
 			this.height = field.GetLength(1);
 		}
 
+		public void UpdateAtPositions (IEnumerable<(int x, int y)> changedItemPositions) {
+
+		}
+
 		public Projection CalcSnakeView (Vector2Int pos, MoveInfo.Direction dir, float halfViewAngle) {
 
 			return default(Projection);

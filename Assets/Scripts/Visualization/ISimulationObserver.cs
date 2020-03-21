@@ -6,6 +6,6 @@ using Visualizable;
 
 namespace Visualization {
 	public interface ISimulationObserver {
-		void SimulationUpdateHandler(IVisualizable curSimulation, HashSet<(int id, Vector2Int? pos)> entities);
+		void SimulationUpdateHandler(IVisualizable curSimulation, IEnumerable<(int x, int y)> updatedPositions);
 	}
 }

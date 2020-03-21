@@ -11,7 +11,8 @@ namespace Visualization {
 		private ISnakeField field;
 
 		private IVisualizable lastSimulation;
-		private Dictionary<int, LinkedList<Vector2Int>> entitysTiles;
+		private Dictionary<int, LinkedList<Vector2Int>> entityPlacement;
+		private Dictionary<Vector2Int, int> positionToPlacementId;
 
 		private Material commonFoodMaterial;
 		public SnakeShaders shaders;
@@ -21,37 +22,29 @@ namespace Visualization {
 			commonFoodMaterial = new Material(shaders.foodShader);
 		}
 
-		public void SimulationUpdateHandler (IVisualizable simulation, HashSet<(int id, Vector2Int? pos)> entities) {
+		public void SimulationUpdateHandler (IVisualizable simulation, IEnumerable<(int x, int y)> updatedPositions) {
 			if (lastSimulation != simulation) {
 				lastSimulation = simulation;
 				SynchronizeWithSimulation(simulation);
 				return;
 			}
 
-			foreach (var entityInfo in entities) {
-				bool entityRemoved = !entityInfo.pos.HasValue;
-				var curPos = (entityRemoved) ? new Vector2Int(-1, -1) : entityInfo.pos.Value;
-				RedrawEntity(simulation, entityInfo.id, entityRemoved, curPos) ;
+			foreach (var pos in updatedPositions) {
+				RedrawEntity(simulation, new Vector2Int(pos.x, pos.y));
 			}
 		}
 
 		#region Entity Redrawing
 
-		private void RedrawEntity (IVisualizable simulation, int id, bool removed, Vector2Int pos) {
-			FieldItem tarItem = default;
-			if (!removed) {
-				tarItem = simulation.Field[pos.x, pos.y];
-				Debug.Assert(tarItem.id == id, "Found item with wrong id.");
-			}
-
-			if (removed || (!removed && tarItem.type == FieldItem.ItemType.None)) {
-				if (entitysTiles.TryGetValue(id, out LinkedList<Vector2Int> placement)) {
-					ClearPlacementNoneTiles(simulation, placement);
-					entitysTiles.Remove(id);
-				}
-			}
+		private void RedrawEntity (IVisualizable simulation, Vector2Int pos) {
+			FieldItem tarItem = simulation.Field[pos.x, pos.y];
 			
 			switch (tarItem.type) {
+				case FieldItem.ItemType.None: {
+					RemoveFromPlacement(pos);
+					field.ClearTileMaterial(pos);
+				} break;
+
 				case FieldItem.ItemType.Food: {
 					RedrawFoodEntity(simulation, tarItem, pos);
 				} break;
@@ -61,7 +54,9 @@ namespace Visualization {
 				} break;
 
 				case FieldItem.ItemType.Snake: {
-					RedrawSnakeEntity(simulation, tarItem, pos);
+					if ((byte)(tarItem.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
+						RedrawSnakeEntity(simulation, tarItem, pos);
+					}
 				} break;
 			}
 		}
@@ -75,8 +70,8 @@ namespace Visualization {
 		}
 
 		private void RedrawFoodEntity (IVisualizable simulation, FieldItem item, Vector2Int pos) {
-			if (entitysTiles.TryGetValue(item.id, out LinkedList<Vector2Int> placement)) {
-				RedrawAction(simulation, placement, pos, 
+			if (entityPlacement.ContainsKey(item.id)) {
+				RedrawAction(simulation, item.id, pos, 
 					(Vector2Int p, bool isOld) => {
 						if (isOld) {
 							if (simulation.Field[p.x, p.y].type == FieldItem.ItemType.None) {
@@ -92,12 +87,12 @@ namespace Visualization {
 
 				var foodPlacement = new LinkedList<Vector2Int>();
 				foodPlacement.AddLast(pos);
-				entitysTiles.Add(item.id, foodPlacement);
+				AddInPlacement(item.id, foodPlacement);
 			}
 		}
 
 		private void RedrawWallEntity (IVisualizable simulation, FieldItem item, Vector2Int pos) {
-			if (entitysTiles.TryGetValue(item.id, out LinkedList<Vector2Int> placement)) {
+			if (entityPlacement.ContainsKey(item.id)) {
 				Debug.LogWarning("TODO: Realize wall redrawing");
 			} else {
 				Debug.LogWarning("TODO: Realize wall redrawing");
@@ -105,8 +100,8 @@ namespace Visualization {
 		}
 
 		private void RedrawSnakeEntity (IVisualizable simulation, FieldItem item, Vector2Int pos) {
-			if (entitysTiles.TryGetValue(item.id, out LinkedList<Vector2Int> placement)) {
-				RedrawAction(simulation, placement, pos,
+			if (entityPlacement.ContainsKey(item.id)) {
+				RedrawAction(simulation, item.id, pos,
 					(Vector2Int p, bool isOld) => {
 						if (isOld && (simulation.Field[p.x, p.y].type == FieldItem.ItemType.None)) {
 							field.ClearTileMaterial(p);
@@ -116,12 +111,16 @@ namespace Visualization {
 
 				DrawSnake(simulation, item, pos);
 			} else {
-				entitysTiles.Add(item.id, FindSnakesPlacement(simulation, pos));
+				AddInPlacement(item.id, FindSnakesPlacement(simulation, pos));
 				DrawSnake(simulation, item, pos);
 			}
 		}
 
-		private void RedrawAction (IVisualizable s, LinkedList<Vector2Int> tiles, Vector2Int nwPos, Action<Vector2Int, bool> redrawTile) {
+		private void RedrawAction (IVisualizable s, int id, Vector2Int nwPos, Action<Vector2Int, bool> redrawTile) {
+			if (!entityPlacement.TryGetValue(id, out LinkedList<Vector2Int> tiles)) {
+				Debug.LogError("Can't find placement with such id");
+			}
+
 			var firstOldTilePos = tiles.First.Value;
 			var curPos = nwPos;
 			var curItem = s.Field[curPos.x, curPos.y];
@@ -130,6 +129,8 @@ namespace Visualization {
 			while (firstOldTilePos != curPos) {
 				redrawTile(curPos, false);
 				curNode = (curNode == null) ? tiles.AddFirst(curPos) : tiles.AddAfter(curNode, curPos);
+
+				UpdatePositionToPlacement(curPos, id);
 
 				if (curItem.prevNeighborPos < 0) break;
 				curPos = new Vector2Int(curItem.prevNeighborPos % s.Width, curItem.prevNeighborPos / s.Width);
@@ -145,6 +146,8 @@ namespace Visualization {
 				curNode = (curNode == tiles.Last) ? tiles.AddLast(curPos) : curNode.Next;
 				curNode.Value = curPos;
 
+				UpdatePositionToPlacement(curPos, id);
+
 				if (curItem.prevNeighborPos < 0) break;
 				curPos = new Vector2Int(curItem.prevNeighborPos % s.Width, curItem.prevNeighborPos / s.Width);
 				curItem = s.Field[curPos.x, curPos.y];
@@ -152,6 +155,9 @@ namespace Visualization {
 
 			while (curNode != tiles.Last) {
 				redrawTile(curNode.Next.Value, true);
+				if (positionToPlacementId.TryGetValue(curNode.Next.Value, out int tarId) && tarId == id) {
+					positionToPlacementId.Remove(curNode.Next.Value);
+				}
 				tiles.Remove(curNode.Next);
 			}
 		}
@@ -162,7 +168,8 @@ namespace Visualization {
 
 		private void SynchronizeWithSimulation (IVisualizable simulation) {
 			field.FieldSize = new Vector2Int(simulation.Width, simulation.Height);
-			entitysTiles = new Dictionary<int, LinkedList<Vector2Int>>();
+			entityPlacement = new Dictionary<int, LinkedList<Vector2Int>>();
+			positionToPlacementId = new Dictionary<Vector2Int, int>();
 
 			field.ClearTilesMaterials();
 			DrawSurroundingWalls(simulation);
@@ -180,7 +187,7 @@ namespace Visualization {
 							byte headMask = (byte)FieldItem.Flag.Head;
 							if ((fieldItem.flags & headMask) == headMask) {
 								snakeHeads.Add((fieldItem, fieldItemPos));
-								entitysTiles.Add(fieldItem.id, FindSnakesPlacement(simulation, fieldItemPos));
+								AddInPlacement(fieldItem.id, FindSnakesPlacement(simulation, fieldItemPos));
 							}
 						} break;
 
@@ -189,7 +196,7 @@ namespace Visualization {
 
 							var foodPlacement = new LinkedList<Vector2Int>();
 							foodPlacement.AddLast(fieldItemPos);
-							entitysTiles.Add(fieldItem.id, foodPlacement);
+							AddInPlacement(fieldItem.id, foodPlacement);
 						} break;
 
 						case FieldItem.ItemType.Wall: {
@@ -197,7 +204,7 @@ namespace Visualization {
 
 							var wallPlacement = new LinkedList<Vector2Int>();
 							wallPlacement.AddLast(fieldItemPos);
-							entitysTiles.Add(fieldItem.id, wallPlacement);
+							AddInPlacement(fieldItem.id, wallPlacement);
 						} break;
 					}
 				}
@@ -338,6 +345,36 @@ namespace Visualization {
 
 			Debug.LogError("Unexpected direction");
 			return 0;
+		}
+
+		#endregion
+
+		#region Placement utilities
+
+		private void AddInPlacement (int id, LinkedList<Vector2Int> placement) {
+			if (!entityPlacement.ContainsKey(id)) {
+				entityPlacement.Add(id, placement);
+			} else {
+				Debug.LogError("Placement with such id already exist.");
+			}
+
+			foreach (var pos in placement) {
+				UpdatePositionToPlacement(pos, id);
+			}
+		}
+
+		private void UpdatePositionToPlacement (Vector2Int pos, int id) {
+			if (positionToPlacementId.ContainsKey(pos)) {
+				positionToPlacementId[pos] = id;
+			} else {
+				positionToPlacementId.Add(pos, id);
+			}
+		}
+
+		private void RemoveFromPlacement (Vector2Int pos) {
+			if (positionToPlacementId.TryGetValue(pos, out int id)) {
+				entityPlacement[id].Remove(pos);
+			}
 		}
 
 		#endregion
