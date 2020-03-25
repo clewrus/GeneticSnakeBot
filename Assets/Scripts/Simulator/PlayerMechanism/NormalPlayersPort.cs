@@ -61,11 +61,10 @@ namespace Simulator {
 				}
 
 				var proj = default(Projection);
+				var headInfo = idToHeadInfo[id_player.Key];
 
-				if (needsInput[id_player.Value]) {
-					var headInfo = idToHeadInfo[id_player.Key];
+				if (needsInput[id_player.Value]) {				
 					var snakeInfo = id_player.Value.GetSnakeInfo();
-
 					proj = projector.CalcSnakeView(
 						pos: (headInfo.headPos.x, headInfo.headPos.y), 
 						dir: headInfo.headDir, 
@@ -75,7 +74,7 @@ namespace Simulator {
 					);
 				}
 
-				var move = id_player.Value.MakeMove(proj);
+				var move = id_player.Value.MakeMove(headInfo.headDir, proj);
 				move.id = id_player.Key;
 				move.valueUsed = 0.1f;
 

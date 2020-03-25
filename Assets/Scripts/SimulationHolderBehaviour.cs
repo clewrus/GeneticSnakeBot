@@ -24,15 +24,26 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 		port.AddPlayer(player, true);
 
 		SubscribeObservers();
+		curSimulation.MakeStep();
+
+		foreach (var obs in observers) {
+			if (obs.GetComponent<ISimulationObserver>() is Visualizer visualizer) {
+				var snakeCamera = Camera.main.GetComponent<SnakeCamera>();
+				snakeCamera.ExpectedPlacementId = player.KnownId.Value;
+				snakeCamera.FieldSize = new Vector2Int(width, height);
+				visualizer.AddObserver(snakeCamera);
+			}
+		}
+
 		StartCoroutine(SimulationUpdater());
 	}
 
 	private void SubscribeObservers () {
 		foreach (var observer in observers) {
 			var obs = observer.GetComponent<ISimulationObserver>();
-			if (obs != null) {
-				curSimulation.AttachObserver(obs);
-			}
+			if (obs == null) continue;
+
+			curSimulation.AttachObserver(obs);
 		}
 	}
 

@@ -167,7 +167,7 @@ namespace Visualization {
 			}
 
 			Vector2 backgroundSize = FieldSize + Vector2Int.one;
-			background.transform.localScale = (Vector3)(TileSize * backgroundSize) + Vector3.forward;
+			background.transform.localScale = (Vector3)(TileSize * (backgroundSize + 20*Vector2.one)) + Vector3.forward;
 		}
 		#endregion
 	}

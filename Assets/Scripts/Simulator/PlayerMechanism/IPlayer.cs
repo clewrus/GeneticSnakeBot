@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Simulator {
 	public interface IPlayer {
-		MoveInfo MakeMove (Projection playerInput);
+		MoveInfo MakeMove (MoveInfo.Direction forwardDir, Projection playerInput);
 		void HandleMoveResult (MoveResult result);
 
 		SnakeInfo GetSnakeInfo ();

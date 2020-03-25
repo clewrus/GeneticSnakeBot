@@ -17,6 +17,9 @@ namespace Visualization {
 		private Material commonFoodMaterial;
 		public SnakeShaders shaders;
 
+		private HashSet<IVisualizerObserver> observers;
+		private HashSet<int> recentlyRemoved;
+
 		private void Awake () {
 			field = GetComponent<SnakeField>();
 			commonFoodMaterial = new Material(shaders.foodShader);
@@ -29,10 +32,44 @@ namespace Visualization {
 				return;
 			}
 
+			recentlyRemoved.Clear();
+
 			foreach (var pos in updatedPositions) {
 				RedrawEntity(simulation, new Vector2Int(pos.x, pos.y));
 			}
+
+			UpdateObservers();
 		}
+
+		#region Observer
+
+		public void AddObserver (IVisualizerObserver nwObserver) {
+			if (observers == null) {
+				observers = new HashSet<IVisualizerObserver>();
+			}
+			observers.Add(nwObserver);
+		}
+
+		public void RemoveObserver (IVisualizerObserver oldObserver) {
+			if (observers == null) return;
+			observers.Remove(oldObserver);
+		}
+
+		public void UpdateObservers () {
+			if (observers == null) return;
+
+			foreach (var observer in observers) {
+				int desiredId = observer.ExpectedPlacementId;
+				if (entityPlacement.TryGetValue(desiredId, out LinkedList<Vector2Int> placement)) {
+					observer.PlacementChangedHandler(placement, exists: true, wasRemovedRecently: false);
+				} else {
+					var isRecentlyRemoved = recentlyRemoved.Contains(desiredId);
+					observer.PlacementChangedHandler(new List<Vector2Int>(), exists: false, isRecentlyRemoved);
+				}
+			}
+		}
+
+		#endregion
 
 		#region Entity Redrawing
 
@@ -170,6 +207,7 @@ namespace Visualization {
 			field.FieldSize = new Vector2Int(simulation.Width, simulation.Height);
 			entityPlacement = new Dictionary<int, LinkedList<Vector2Int>>();
 			positionToPlacementId = new Dictionary<Vector2Int, int>();
+			recentlyRemoved = new HashSet<int>();
 
 			field.ClearTilesMaterials();
 			DrawSurroundingWalls(simulation);
@@ -374,6 +412,7 @@ namespace Visualization {
 		private void RemoveFromPlacement (Vector2Int pos) {
 			if (positionToPlacementId.TryGetValue(pos, out int id)) {
 				entityPlacement[id].Remove(pos);
+				recentlyRemoved.Add(id);
 			}
 		}
 

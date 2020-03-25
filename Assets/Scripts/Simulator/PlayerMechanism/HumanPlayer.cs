@@ -8,7 +8,9 @@ namespace Simulator {
 		SnakeInfo info;
 		MoveInfo moveInfo;
 
-		private void Start () {
+		public int? KnownId { get; private set; }
+
+		private void Awake () {
 			info = new SnakeInfo {
 				maxLength = 5,
 				maxValue = 5,
@@ -31,10 +33,14 @@ namespace Simulator {
 		}
 
 		public void HandleMoveResult (MoveResult result) {
+			if (KnownId == null) {
+				KnownId = result.id;
+			}
+
 			Debug.Log($"HumanPlayer HandleMove {result}");
 		}
 
-		public MoveInfo MakeMove (Projection playerInput) {
+		public MoveInfo MakeMove (MoveInfo.Direction dir, Projection playerInput) {
 			return moveInfo;
 		}
 

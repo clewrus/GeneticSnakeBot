@@ -205,16 +205,18 @@ namespace Simulator {
 
 		private void UpdateSnake (int id, MoveInfo moveInfo) {
 			Vector2Int oldHeadPos;
+			bool isNewSnake = false;
 			if (!idToFieldPos.TryGetValue(id, out oldHeadPos) && !deadSnakes.Contains(id)) {
 				oldHeadPos = AddNewSnake(id);
 				idToPort.Add(id, FindSnakePort(id));
+				isNewSnake = true;
 			}
 
 			if (!ManageValueCost(id, moveInfo.valueUsed)) return;            
 
 			var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
-			var selectedDir = moveInfo.dir;
-			bool skipMove = (selectedDir == MoveInfo.Direction.None || selectedDir == OppositDirection(oldHeadItem.dir));
+			var selectedDir = (moveInfo.dir==MoveInfo.Direction.None)? oldHeadItem.dir: moveInfo.dir;
+			bool skipMove = (selectedDir == OppositDirection(oldHeadItem.dir));
 
 			var newHeadPos = CalcNewHeadPos(oldHeadPos, selectedDir);
 
@@ -227,9 +229,8 @@ namespace Simulator {
 				wallHitted = wallHitted || (hittedItem.type == FieldItem.ItemType.Wall);
 			}           
 
-			if (skipMove || wallHitted) {
+			if (isNewSnake || skipMove || wallHitted) {
 				UpdateTail(oldHeadPos, false);
-				
 				return;
 			}
 			
