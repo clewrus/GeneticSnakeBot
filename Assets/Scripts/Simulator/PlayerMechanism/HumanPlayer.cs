@@ -11,12 +11,12 @@ namespace Simulator {
 		private void Start () {
 			info = new SnakeInfo {
 				maxLength = 5,
-				maxValue = 1,
-				halfViewAngle = 0,
-				eyeQuality = 0,
+				maxValue = 5,
+				halfViewAngle = 0.75f * 3.1416f,
+				eyeQuality = 15,
 				denseLayerSize = 0,
 				colorValues = new Vector3 (4, 3.23f, 8),
-				cullingDistance = 0
+				cullingDistance = 5
 			};
 
 			moveInfo.snakeInfo = info;

@@ -12,5 +12,14 @@ namespace Simulator {
 
 		public Vector3 colorValues;
 		public float cullingDistance;
+
+		public static float CalcKindship (SnakeInfo a, SnakeInfo b) {
+			float distance = (a.colorValues - b.colorValues).sqrMagnitude;
+			distance += Mathf.Pow(a.maxLength - b.maxLength, 2);
+			distance += Mathf.Pow(a.halfViewAngle - b.halfViewAngle, 2);
+			distance += Mathf.Pow(a.denseLayerSize - b.denseLayerSize, 2);
+
+			return Mathf.Sqrt(distance);
+		}
 	}
 }

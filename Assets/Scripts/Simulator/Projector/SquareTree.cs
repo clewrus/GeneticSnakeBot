@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Assets.Scripts.Simulator.Projector {
+namespace Simulator {
 	public class SquareTree {
 
 		#region Fields
@@ -81,6 +81,7 @@ namespace Assets.Scripts.Simulator.Projector {
 
 		public bool Remove (int x, int y) {
 			if (!allItems.TryGetValue((x, y), out SquareTree tarNode)) return false;
+			allItems.Remove((x, y));
 
 			bool itemFound = false;
 			for (int i = 0; i < tarNode.contentCount; i++) {
@@ -110,8 +111,8 @@ namespace Assets.Scripts.Simulator.Projector {
 			(float x, float y) halfDim = ((float)dimentions.x / 2f, (float)dimentions.y / 2f);
 			(float x, float y) center = (minCorner.x + halfDim.x, minCorner.y + halfDim.y);
 
-			float circumscribedRSquared = halfDim.x * halfDim.x + halfDim.y * halfDim.y;
-			return (center.x - x)*(center.x - x) + (center.y - y)*(center.y - y) <= circumscribedRSquared;
+			float circumscribedR = halfDim.x * halfDim.x + halfDim.y * halfDim.y;
+			return (center.x-x)*(center.x-x) + (center.y-y)*(center.y-y) <= (circumscribedR+R)*(circumscribedR+R);
 		}
 
 		private int FindChildIndex (int x, int y) {

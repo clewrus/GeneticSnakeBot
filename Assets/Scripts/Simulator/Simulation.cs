@@ -37,7 +37,7 @@ namespace Simulator {
 		private readonly int SPAWN_BORDER = 1;
 
 		private readonly float SPAWNED_FOOD_VALUE = 1;
-		private readonly float FOOD_SPAWN_RATE = 0.1f;
+		private readonly float FOOD_SPAWN_RATE = 0.05f;
 		private readonly float HALF_FOOD_FRAME = 30;
 #endregion
 
@@ -53,19 +53,20 @@ namespace Simulator {
 			this.fieldGenerator = new FieldGenerator(fieldGenerationSeed, width, height, GetNextId);
 			field = fieldGenerator.GenerateField();
 
+			idToFieldPos = new Dictionary<int, Vector2Int>(this.fieldGenerator.spawnedObstacles);
+
 			observers = new List<ISimulationObserver>();
 			rand = new System.Random();
 
 			this.width = width;
 			this.height = height;
 
-			fieldProjector = new FieldProjector(field);
+			fieldProjector = new FieldProjector(field, (id) => idToSnakeInfo[id]);
 			fieldProjector.UpdateAtPositions(Vector2IntToTuple(idToFieldPos.Values));
 
 			playersPorts = new List<IPlayersPort>();
 
 			deadSnakes = new HashSet<int>();
-			idToFieldPos = new Dictionary<int, Vector2Int>();
 			idToSnakeInfo = new Dictionary<int, SnakeInfo>();
 
 			idToCurLength = new Dictionary<int, int>();
@@ -212,8 +213,8 @@ namespace Simulator {
 			if (!ManageValueCost(id, moveInfo.valueUsed)) return;            
 
 			var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
-			var selectedDir = (moveInfo.dir==MoveInfo.Direction.None)? oldHeadItem.dir: moveInfo.dir;
-			bool skipMove = (selectedDir == OppositDirection(oldHeadItem.dir));
+			var selectedDir = moveInfo.dir;
+			bool skipMove = (selectedDir == MoveInfo.Direction.None || selectedDir == OppositDirection(oldHeadItem.dir));
 
 			var newHeadPos = CalcNewHeadPos(oldHeadPos, selectedDir);
 
@@ -240,7 +241,9 @@ namespace Simulator {
 		}
 
 		private void MoveHead (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
-			if (hitted.type == FieldItem.ItemType.None) {
+			bool bitedItsTail = (hitted.id == nwItem.id && hitted.prevNeighborPos == -1);
+
+			if (hitted.type == FieldItem.ItemType.None || bitedItsTail) {
 				unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
 				UpdateTail(oldPos, true);
 				UpdateFieldItem(nwPos.x, nwPos.y, nwItem);

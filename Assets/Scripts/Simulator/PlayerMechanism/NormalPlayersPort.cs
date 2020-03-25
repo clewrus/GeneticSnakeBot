@@ -55,13 +55,24 @@ namespace Simulator {
 			var moveInfos = new List<MoveInfo>(idToPlayer.Count);
 
 			foreach (var id_player in idToPlayer) {
+				if (idToHeadInfo[id_player.Key].headDir == MoveInfo.Direction.None) {
+					moveInfos.Add(new MoveInfo { id = id_player.Key, valueUsed = 0f });
+					continue;
+				}
+
 				var proj = default(Projection);
 
 				if (needsInput[id_player.Value]) {
 					var headInfo = idToHeadInfo[id_player.Key];
 					var snakeInfo = id_player.Value.GetSnakeInfo();
 
-					proj = projector.CalcSnakeView(headInfo.headPos, headInfo.headDir, snakeInfo.halfViewAngle);
+					proj = projector.CalcSnakeView(
+						pos: (headInfo.headPos.x, headInfo.headPos.y), 
+						dir: headInfo.headDir, 
+						cullingDistance: snakeInfo.cullingDistance, 
+						halfViewAngle: snakeInfo.halfViewAngle,
+						eyeQuality: snakeInfo.eyeQuality
+					);
 				}
 
 				var move = id_player.Value.MakeMove(proj);

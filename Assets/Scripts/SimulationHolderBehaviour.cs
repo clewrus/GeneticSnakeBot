@@ -21,7 +21,7 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 		curSimulation.AddPlayerPort(port);
 
 		var player = GameObject.FindObjectOfType<HumanPlayer>();
-		port.AddPlayer(player, false);
+		port.AddPlayer(player, true);
 
 		SubscribeObservers();
 		StartCoroutine(SimulationUpdater());

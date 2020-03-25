@@ -15,6 +15,8 @@ public class FieldGenerator {
 	private double currentSpawnTrashold;
 	private int spawnAttempts;
 
+	public Dictionary<int, Vector2Int> spawnedObstacles;
+
 	#region Constants
 	public readonly float OBSTACLES_SPAWN_ITERATIONS_PER_TILE = 1;
 	public readonly float OBSTACLE_VOID_VALUE = 5;
@@ -35,6 +37,7 @@ public class FieldGenerator {
 		this.height = height;
 
 		GetNextId = idGenerator;
+		spawnedObstacles = new Dictionary<int, Vector2Int>();
 	}
 
 	public FieldItem[,] GenerateField () {
@@ -83,6 +86,8 @@ public class FieldGenerator {
 			var nwWallTile = new FieldItem { id = GetNextId(), type = FieldItem.ItemType.Wall };
 			obstacles.Add(nwTilePosition);
 			field[nwTilePosition.x, nwTilePosition.y] = nwWallTile;
+
+			spawnedObstacles.Add(nwWallTile.id, nwTilePosition);
 
 			return;
 		}
@@ -169,28 +174,6 @@ public class FieldGenerator {
 
 		return prob;
 	}
-
-	//private class Vector2IntComparer : IComparer<Vector2Int> {
-	//	private bool yFirst;
-
-	//	public Vector2IntComparer (bool yFirst) {
-	//		this.yFirst = yFirst;
-	//	}
-
-	//	public int Compare (Vector2Int x, Vector2Int y) {
-	//		if (yFirst) {
-	//			int deltaY = x.y - y.y;
-	//			if (deltaY != 0) return deltaY;
-
-	//			return x.x - y.x;
-	//		} else {
-	//			int deltaX = x.x - y.x;
-	//			if (deltaX != 0) return deltaX;
-
-	//			return x.y - y.y;
-	//		}
-	//	}
-	//}
 
 	private struct FieldVoid {
 		public Vector2Int pos;
