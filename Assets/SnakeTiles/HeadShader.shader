@@ -55,7 +55,6 @@
 			
 			#include "SnakeCommon.cginc"
 
-			float _TurnRight;
 			float _SnakeID;
 
 			float _TailN;
@@ -68,8 +67,10 @@
 			float _CurvAmplitude;
 
 			float4 _BodyL;
-
 			float4 _HeadConfig;
+
+			float3 _GyroidConfig[2];
+			fixed4 _SnakeColors[3];
 
 			float f1 (float v, float a) {
 				float u = - 2 * (_HeadConfig.y - a) / pow(_HeadConfig.x, 3);
@@ -143,8 +144,13 @@
 
 					bodyR = f3Op(uv.y);
 				}
+
+				fixed3 colorMask = SquamaTexture(iuv + float2(0, _TailN), bodyR, _EdgeBlur, _GyroidConfig);
+
+				col.rgb = _SnakeColors[0] * colorMask.x;
+				col.rgb += _SnakeColors[1] * colorMask.y;
+				col.rgb += _SnakeColors[2] * colorMask.z;
 				
-				col.rgb = SquamaTexture(iuv + float2(0, _TailN), bodyR);
 				return col;
 			}
 

@@ -66,6 +66,9 @@
 
 			float4 _BodyL;
 
+			float3 _GyroidConfig[2];
+			fixed4 _SnakeColors[3];
+
 			#include "SnakeCommon.cginc"
 
 			inline float2 TurnTransform (float2 uv) {
@@ -111,10 +114,14 @@
 				float t = 2 * PI * frac(4 * _Time.x);
 				uv.x -= BodyRadius(uv.y)  - (1 - _EdgeOffset);
 
-				fixed4 col = 0;
-				col.rgb = SquamaTexture(uv + float2(-0.5, _TailN), 0.5 - _EdgeOffset);
-				col.a = MakeRect(uv.x, _EdgeOffset, 1 - _EdgeOffset, _EdgeBlur);
+				fixed3 colorMask = SquamaTexture(uv + float2(-0.5, _TailN), 0.5 - _EdgeOffset, _EdgeBlur, _GyroidConfig);
 
+				fixed4 col = 0;
+				col.rgb += _SnakeColors[0] * colorMask.x;
+				col.rgb += _SnakeColors[1] * colorMask.y;
+				col.rgb += _SnakeColors[2] * colorMask.z;
+
+				col.a = MakeRect(uv.x, _EdgeOffset, 1 - _EdgeOffset, _EdgeBlur);
 				return col;
 			}
 			ENDCG

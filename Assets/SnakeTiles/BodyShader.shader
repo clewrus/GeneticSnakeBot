@@ -50,7 +50,6 @@
 				return o;
 			}
 
-			float _TurnRight;
 			float _SnakeID;
 
 			float _TailN;
@@ -64,14 +63,23 @@
 
 			float4 _BodyL;
 
+			float3 _GyroidConfig[2];
+			fixed4 _SnakeColors[3];
+
 			#include "SnakeCommon.cginc"
 			
 			fixed TailMask (float2 uv) {
 				uv.x -= 0.5;
 				float relY = _TailN + uv.y - _BodyL.x;
-				float2 r = float2(uv.x, relY);
+				float r = length(float2(uv.x, relY));
 
-				float mask = lerp((length(r) < 0.5 - _EdgeOffset), 1, 0 < relY);
+				float bodyR = 0.5 - _EdgeOffset;
+
+				float shadeK = 0.5;
+				float shade = (bodyR - shadeK * r) / (bodyR - shadeK * abs(uv.x));
+				float tailTipMask = shade * S(_EdgeBlur, 0, r - bodyR);
+
+				float mask = lerp(tailTipMask, 1, 0 < relY);
 				return mask;
 			}
 
@@ -81,14 +89,16 @@
 
 				float rnd = RandFromId(_SnakeID);                
 				float deltaX = _CurvAmplitude * sin( SnakePhase(rnd, _CurvRate, _TailN + uv.y) );
-
 				uv.x += deltaX * pow(lerp(1, 1 - uv.y, _HeadN == 1), 0.5);
 
-				fixed4 col;
-				col.rgb = SquamaTexture(uv + float2(-0.5, _TailN), 0.5 - _EdgeOffset);
-				col.a = MakeRect(uv.x, _EdgeOffset, 1 - _EdgeOffset, _EdgeBlur);
-				col.a *= TailMask(uv);
+				fixed3 colorMask = SquamaTexture(uv + float2(-0.5, _TailN), 0.5 - _EdgeOffset, _EdgeBlur, _GyroidConfig);
 
+				fixed4 col = 0;
+				col.rgb += _SnakeColors[0] * colorMask.x;
+				col.rgb += _SnakeColors[1] * colorMask.y;
+				col.rgb += _SnakeColors[2] * colorMask.z;
+
+				col.a = TailMask(uv) * MakeRect(uv.x, _EdgeOffset, 1 - _EdgeOffset, _EdgeBlur);
 				return col;
 			}
 			ENDCG

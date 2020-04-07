@@ -13,12 +13,20 @@ namespace Simulator {
 		private void Awake () {
 			info = new SnakeInfo {
 				maxLength = 5,
-				maxValue = 5,
+				maxValue = 1,
 				halfViewAngle = 0.75f * 3.1416f,
 				eyeQuality = 15,
 				denseLayerSize = 0,
-				colorValues = new Vector3 (4, 3.23f, 8),
-				cullingDistance = 5
+				cullingDistance = 5,
+				scuamaPatern = new SnakeInfo.ScuamaPatern {
+					giroid0 = (0.3f, 1.5f),
+					giroid1 = (0.5f, 1.0f),
+					giroid2 = (1.2f, 0.9f),
+
+					backgroundColor = new Vector4(0.1f, 0.4f, 0.1f, 0),
+					color1 = new Vector4(0.8f, 0.8f, 0.1f, 0),
+					color2 = new Vector4(0.8f, 0.1f, 0.1f, 0),
+				}
 			};
 
 			moveInfo.snakeInfo = info;

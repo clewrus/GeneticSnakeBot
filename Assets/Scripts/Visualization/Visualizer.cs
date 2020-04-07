@@ -11,6 +11,7 @@ namespace Visualization {
 		private ISnakeField field;
 
 		private IVisualizable lastSimulation;
+		private Dictionary<int, SnakeInfo> idToInfo;
 		private Dictionary<int, LinkedList<Vector2Int>> entityPlacement;
 		private Dictionary<Vector2Int, int> positionToPlacementId;
 
@@ -125,6 +126,7 @@ namespace Visualization {
 				var foodPlacement = new LinkedList<Vector2Int>();
 				foodPlacement.AddLast(pos);
 				AddInPlacement(item.id, foodPlacement);
+
 			}
 		}
 
@@ -148,6 +150,8 @@ namespace Visualization {
 
 				DrawSnake(simulation, item, pos);
 			} else {
+				AddSnakeIntoInfoDictionary(item.id, simulation.GetSnakeInfo(item.id));
+
 				AddInPlacement(item.id, FindSnakesPlacement(simulation, pos));
 				DrawSnake(simulation, item, pos);
 			}
@@ -206,6 +210,7 @@ namespace Visualization {
 		private void SynchronizeWithSimulation (IVisualizable simulation) {
 			field.FieldSize = new Vector2Int(simulation.Width, simulation.Height);
 			entityPlacement = new Dictionary<int, LinkedList<Vector2Int>>();
+			idToInfo = new Dictionary<int, SnakeInfo>();
 			positionToPlacementId = new Dictionary<Vector2Int, int>();
 			recentlyRemoved = new HashSet<int>();
 
@@ -225,6 +230,8 @@ namespace Visualization {
 							byte headMask = (byte)FieldItem.Flag.Head;
 							if ((fieldItem.flags & headMask) == headMask) {
 								snakeHeads.Add((fieldItem, fieldItemPos));
+
+								AddSnakeIntoInfoDictionary(fieldItem.id, simulation.GetSnakeInfo(fieldItem.id));
 								AddInPlacement(fieldItem.id, FindSnakesPlacement(simulation, fieldItemPos));
 							}
 						} break;
@@ -331,12 +338,16 @@ namespace Visualization {
 
 			AddSnakesTileToField(sim, fieldItem, snakesMaterials);
 
+			var snakeInfo = idToInfo[fieldItem.id];
 			int snakeLength = snakesMaterials.Count;
 			for (int i = 0; i < snakeLength; i++) {
 				var tarMat = snakesMaterials.Pop();
 				tarMat.SetFloat("_SnakeID", fieldItem.id);
 				tarMat.SetFloat("_TailN", i);
 				tarMat.SetFloat("_HeadN", snakeLength - 1 - i);
+
+				tarMat.SetColorArray("_SnakeColors", snakeInfo.scuamaPatern.GetColorArray());
+				tarMat.SetVectorArray("_GyroidConfig", snakeInfo.scuamaPatern.GetGyroidConfig());
 			}
 		}
 
@@ -387,6 +398,10 @@ namespace Visualization {
 
 		#endregion
 
+		private void AddSnakeIntoInfoDictionary (int id, SnakeInfo snakeInfo) {
+			idToInfo.Add(id, snakeInfo);
+		}
+
 		#region Placement utilities
 
 		private void AddInPlacement (int id, LinkedList<Vector2Int> placement) {
@@ -411,8 +426,15 @@ namespace Visualization {
 
 		private void RemoveFromPlacement (Vector2Int pos) {
 			if (positionToPlacementId.TryGetValue(pos, out int id)) {
-				entityPlacement[id].Remove(pos);
+				var foundList = entityPlacement[id];
+
 				recentlyRemoved.Add(id);
+				foundList.Remove(pos);
+
+				if (foundList.Count == 0) {
+					positionToPlacementId.Remove(pos);
+					entityPlacement.Remove(id);
+				}				
 			}
 		}
 
