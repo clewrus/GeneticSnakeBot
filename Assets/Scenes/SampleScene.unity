@@ -276,6 +276,7 @@ MonoBehaviour:
   moveFluidity: 0.8
   massCenterOffset: 0.8
   prevMoveDurInfluence: 0.3
+  backgroundMaterial: {fileID: 2100000, guid: e6815b8625e98fd4e97c047dd3029aeb, type: 2}
 --- !u!20 &519420031
 Camera:
   m_ObjectHideFlags: 0
@@ -480,7 +481,6 @@ MonoBehaviour:
     type: 3}
   m_tileSize: 1
   transparentShader: {fileID: 4800000, guid: 8f8f6e38bcd94e347801a4cf8ff7533f, type: 3}
-  backgroundMaterial: {fileID: 2100000, guid: e6815b8625e98fd4e97c047dd3029aeb, type: 2}
 --- !u!114 &1878758460
 MonoBehaviour:
   m_ObjectHideFlags: 0

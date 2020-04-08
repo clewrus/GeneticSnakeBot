@@ -5,6 +5,9 @@
 		_Color ("Color", Color) = (0.01, 0.01, 0.01, 1)
 		_VignetteIntencity ("Intencity of Vignette", Range(0, 0.3)) = 0.05
 		_VignetteColor ("Color of Vignette", Color) = (0.1, 0.1, 1)
+		[Space]
+		_BrightLightsFrequency("Bright lights per tile", Range(0, 1)) = 0.08
+		_FaintLightsFrequency ("Faint lights per tile", Range(0, 1)) = 0.12
 	}
 	SubShader
 	{
@@ -23,6 +26,9 @@
 		fixed4 _Color;
 		float _VignetteIntencity;
 		fixed3 _VignetteColor;
+
+		float _BrightLightsFrequency;
+		float _FaintLightsFrequency;
 
 
 		float2 rand2(float2 pos, float seed) {
@@ -62,10 +68,10 @@
 		void surf (Input IN, inout SurfaceOutput o) {
 			o.Emission = 0;
 
-			float curLayer = particleLayer(IN.worldPos, 15, 228.322);
+			float curLayer = particleLayer(IN.worldPos, 1 / _BrightLightsFrequency, 228.322);
 			o.Emission += 2 * curLayer;
 
-			curLayer = particleLayer(IN.worldPos, 9, 322.228);
+			curLayer = particleLayer(IN.worldPos, 1 / _FaintLightsFrequency, 322.228);
 			o.Emission += 0.5 * curLayer;
 
 			o.Albedo = _Color.rgb;

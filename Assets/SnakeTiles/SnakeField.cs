@@ -42,9 +42,6 @@ namespace Visualization {
 		[Space]
 		[SerializeField] private Shader transparentShader= null;
 		private Material transparentTileMaterial = null;
-
-		[SerializeField] private Material backgroundMaterial = null;
-		private GameObject background = null;
 #endregion
 
 #region Public
@@ -129,8 +126,6 @@ namespace Visualization {
 
 			instancedTiles = new GameObject[FieldSize.x + 2, FieldSize.y + 2];
 			FillField();
-
-			UpdateBackground();
 		}
 
 		private void FillField () {
@@ -151,23 +146,6 @@ namespace Visualization {
 			offset += (TileSize / 2f) * Vector2.one;
 
 			tile.transform.localPosition = TileSize * (new Vector2(i, j)) + offset;
-		}
-
-		private void UpdateBackground () {
-			if (background == null) {
-				background = GameObject.Instantiate(tilePrefab, this.transform, false);
-				background.transform.localPosition = new Vector3(1, 1, 1);
-				background.name = "Background";
-				background.transform.SetSiblingIndex(0);
-
-				var backgroundRenderer = background.GetComponent<MeshRenderer>();
-				if (backgroundRenderer != null) {
-					backgroundRenderer.material = backgroundMaterial;
-				}
-			}
-
-			Vector2 backgroundSize = FieldSize + Vector2Int.one;
-			background.transform.localScale = (Vector3)(TileSize * (backgroundSize + 20*Vector2.one)) + Vector3.forward;
 		}
 		#endregion
 	}

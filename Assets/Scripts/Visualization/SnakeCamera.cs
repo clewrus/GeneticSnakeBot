@@ -14,9 +14,13 @@ namespace Visualization {
 		private float? previousMoveDuration;
 		private Coroutine cameraMovingCoroutine;
 
+		private Transform backgroundTransform;
+
 		[SerializeField] [Range(0.1f, 1)] private float moveFluidity = 0.8f;
 		[SerializeField] [Range(0.1f, 2)] private float massCenterOffset = 0.8f;
 		[SerializeField] [Range(0, 1)] private float prevMoveDurInfluence = 0.3f;
+		[Space]
+		[SerializeField] private Material backgroundMaterial = null;
 
 		public void PlacementChangedHandler (IEnumerable<Vector2Int> placement, bool exists, bool wasRemovedRecently) {
 			if (!exists) return;
@@ -77,6 +81,35 @@ namespace Visualization {
 			averagePos /= totalMass;
 			var nwCameraPos = averagePos + 0.5f * (FieldSize.x * Vector2.left + FieldSize.y * Vector2.down + 3*Vector2.one);
 			return nwCameraPos;
+		}
+
+		private void OnPreRender () {
+			if (backgroundTransform == null) {
+				InitializeBackground();
+			}
+
+			var cam = GetComponent<Camera>();
+			backgroundTransform.localScale = new Vector3(
+				2 * cam.aspect * cam.orthographicSize + 1,
+				2 * cam.orthographicSize + 1,
+				1
+			);
+		}
+
+		private void InitializeBackground () {
+			var background = new GameObject("Background", typeof(MeshFilter), typeof(MeshRenderer));
+
+			background.GetComponent<MeshFilter>().mesh = new Mesh() {
+				vertices = new Vector3[] { -0.5f*Vector2.one, Vector2.up-0.5f*Vector2.one, 0.5f*Vector2.one, Vector2.right-0.5f*Vector2.one },
+				triangles = new int[] { 0, 1, 3, 3, 1, 2 }
+			};
+
+			background.GetComponent<MeshRenderer>().material = backgroundMaterial;
+
+			backgroundTransform = background.transform;
+			backgroundTransform.SetParent(transform, false);
+
+			backgroundTransform.localPosition =  (Mathf.Abs(transform.localPosition.z) + 1) * Vector3.forward;
 		}
 	}
 }
