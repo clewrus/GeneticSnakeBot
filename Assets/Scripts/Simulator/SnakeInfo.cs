@@ -4,6 +4,8 @@ using UnityEngine;
 namespace Simulator {
 	public class SnakeInfo {
 		public int maxLength;
+		public float bodyWidth;
+
 		public float maxValue;
 		public float halfViewAngle;
 

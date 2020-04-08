@@ -8,11 +8,14 @@ namespace Simulator {
 		SnakeInfo info;
 		MoveInfo moveInfo;
 
+		public bool NeedsProjection => false;
+
 		public int? KnownId { get; private set; }
 
 		private void Awake () {
 			info = new SnakeInfo {
 				maxLength = 5,
+				bodyWidth = 0.6f,
 				maxValue = 1,
 				halfViewAngle = 0.75f * 3.1416f,
 				eyeQuality = 15,

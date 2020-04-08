@@ -9,18 +9,15 @@ namespace Simulator {
 		private Dictionary<int, IPlayer> idToPlayer;
 		private Dictionary<IPlayer, int> playerToId;
 
-		private Dictionary<IPlayer, bool> needsInput;
 		private Dictionary<int, (Vector2Int headPos, MoveInfo.Direction headDir)> idToHeadInfo;
 
 		public NormalPlayersPort () {
 			idToPlayer = new Dictionary<int, IPlayer>();
 			playerToId = new Dictionary<IPlayer, int>();
-			needsInput = new Dictionary<IPlayer, bool>();
 			idToHeadInfo = new Dictionary<int, (Vector2Int, MoveInfo.Direction)>();
 		}
 
-		public void AddPlayer (IPlayer player, bool needsInput) {
-			this.needsInput.Add(player, needsInput);
+		public void AddPlayer (IPlayer player) {
 			Debug.Assert(GetNextId != null, $"({this}) GetNextId Func is null");
 
 			int id = GetNextId();
@@ -30,6 +27,14 @@ namespace Simulator {
 			this.idToHeadInfo.Add(id, (Vector2Int.zero, MoveInfo.Direction.None));
 		}
 
+		public bool Contains (IPlayer player) {
+			return playerToId.ContainsKey(player);
+		}
+
+		public bool TryGetPlayerId (IPlayer player, out int id) {
+			return playerToId.TryGetValue(player, out id);
+		}
+
 		public void RemovePlayer (int id) {
 			if (!idToPlayer.ContainsKey(id)) return;
 
@@ -37,7 +42,6 @@ namespace Simulator {
 			idToPlayer.Remove(id);
 			playerToId.Remove(player);
 
-			needsInput.Remove(player);
 			idToHeadInfo.Remove(id);
 		}
 
@@ -63,7 +67,7 @@ namespace Simulator {
 				var proj = default(Projection);
 				var headInfo = idToHeadInfo[id_player.Key];
 
-				if (needsInput[id_player.Value]) {				
+				if (id_player.Value.NeedsProjection) {				
 					var snakeInfo = id_player.Value.GetSnakeInfo();
 					proj = projector.CalcSnakeView(
 						pos: (headInfo.headPos.x, headInfo.headPos.y), 

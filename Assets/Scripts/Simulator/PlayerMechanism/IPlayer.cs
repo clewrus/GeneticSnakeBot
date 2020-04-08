@@ -6,6 +6,8 @@ namespace Simulator {
 		MoveInfo MakeMove (MoveInfo.Direction forwardDir, Projection playerInput);
 		void HandleMoveResult (MoveResult result);
 
+		bool NeedsProjection { get; }
+
 		SnakeInfo GetSnakeInfo ();
 	}
 }

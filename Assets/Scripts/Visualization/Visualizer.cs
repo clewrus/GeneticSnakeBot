@@ -49,6 +49,7 @@ namespace Visualization {
 				observers = new HashSet<IVisualizerObserver>();
 			}
 			observers.Add(nwObserver);
+			nwObserver.FieldSize = field.FieldSize;
 		}
 
 		public void RemoveObserver (IVisualizerObserver oldObserver) {
@@ -67,6 +68,12 @@ namespace Visualization {
 					var isRecentlyRemoved = recentlyRemoved.Contains(desiredId);
 					observer.PlacementChangedHandler(new List<Vector2Int>(), exists: false, isRecentlyRemoved);
 				}
+			}
+		}
+
+		private void UpdateObserversFieldSize () {
+			foreach (var observer in observers) {
+				observer.FieldSize = field.FieldSize;
 			}
 		}
 
@@ -209,6 +216,7 @@ namespace Visualization {
 
 		private void SynchronizeWithSimulation (IVisualizable simulation) {
 			field.FieldSize = new Vector2Int(simulation.Width, simulation.Height);
+			UpdateObserversFieldSize();
 			entityPlacement = new Dictionary<int, LinkedList<Vector2Int>>();
 			idToInfo = new Dictionary<int, SnakeInfo>();
 			positionToPlacementId = new Dictionary<Vector2Int, int>();
@@ -345,6 +353,7 @@ namespace Visualization {
 				tarMat.SetFloat("_SnakeID", fieldItem.id);
 				tarMat.SetFloat("_TailN", i);
 				tarMat.SetFloat("_HeadN", snakeLength - 1 - i);
+				tarMat.SetFloat("_EdgeOffset", 0.5f * (1 - snakeInfo.bodyWidth));
 
 				tarMat.SetColorArray("_SnakeColors", snakeInfo.scuamaPatern.GetColorArray());
 				tarMat.SetVectorArray("_GyroidConfig", snakeInfo.scuamaPatern.GetGyroidConfig());
