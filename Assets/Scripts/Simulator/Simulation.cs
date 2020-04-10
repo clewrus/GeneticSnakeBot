@@ -47,6 +47,7 @@ namespace Simulator {
 
 		private HashSet<(int x, int y)> updatedPositions = new HashSet<(int x, int y)>();
 		private HashSet<int> removedEntities = new HashSet<int>();
+		private Dictionary<int, float> eatenValue = new Dictionary<int, float>();
 #endregion
 
 		public Simulation (int width, int height, int fieldGenerationSeed) {
@@ -133,12 +134,15 @@ namespace Simulator {
 					results.Add(id_port.Value, curPortResults);
 				}
 
+				float snakesNewValue = (eatenValue.TryGetValue(id_port.Key, out float value)) ? value : 0;
 				curPortResults.Add(new MoveResult {
 					id = id_port.Key,
 					value = idToValue[id_port.Key],
 					headPos = headPos,
 					headDir = headDir,
-					flag = ((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive),
+					eatenValue = snakesNewValue,
+					flag = (byte)(((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive)
+							| ((snakesNewValue > 0) ? (byte)MoveResult.State.GotAFood : (byte)0)),
 				});
 			}
 
@@ -159,6 +163,7 @@ namespace Simulator {
 			curFrame += 1;
 			updatedPositions.Clear();
 			removedEntities.Clear();
+			eatenValue.Clear();
 
 			foreach (var id_moveInfo in curMovesDictBuffer) {
 				UpdateSnake(id_moveInfo.Key, id_moveInfo.Value);
@@ -215,8 +220,7 @@ namespace Simulator {
 			}
 
 			var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
-			if (oldHeadItem.type == FieldItem.ItemType.None)
-				throw new System.Exception();
+			if (oldHeadItem.type == FieldItem.ItemType.None) throw new System.Exception();
 			if (oldHeadItem.frameOfLastUpdate == curFrame) return;
 
 			if (!ManageValueCost(id, moveInfo.valueUsed)) return;            
@@ -269,6 +273,7 @@ namespace Simulator {
 
 			RemoveEntityTail(nwPos);
 			idToValue[nwItem.id] += hitted.value;
+			eatenValue.Add(nwItem.id, hitted.value);
 			
 			unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head | FieldItem.Flag.Shortened)); }
 

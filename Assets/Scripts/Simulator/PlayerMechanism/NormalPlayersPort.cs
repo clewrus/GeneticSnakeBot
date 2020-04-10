@@ -6,6 +6,8 @@ namespace Simulator {
 	public class NormalPlayersPort : IPlayersPort {
 		public System.Func<int> GetNextId { private get; set; }
 
+		public IScorer Scorer { get; set; }
+
 		private Dictionary<int, IPlayer> idToPlayer;
 		private Dictionary<IPlayer, int> playerToId;
 
@@ -51,7 +53,13 @@ namespace Simulator {
 			});
 
 			results.ForEach((res) => {
-				idToPlayer[res.id].HandleMoveResult(res);
+				var curPlayer = idToPlayer[res.id];
+
+				if (Scorer != null) {
+					Scorer.UpdateScore(curPlayer, res.eatenValue);
+				}
+
+				curPlayer.HandleMoveResult(res);
 			});
 		}
 

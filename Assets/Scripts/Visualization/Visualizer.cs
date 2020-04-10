@@ -106,14 +106,6 @@ namespace Visualization {
 			}
 		}
 
-		private void ClearPlacementNoneTiles (IVisualizable simulation, LinkedList<Vector2Int> placement) {
-			foreach (var pos in placement) {
-				if (simulation.Field[pos.x, pos.y].type == FieldItem.ItemType.None) {
-					field.ClearTileMaterial(pos);
-				}
-			}
-		}
-
 		private void RedrawFoodEntity (IVisualizable simulation, FieldItem item, Vector2Int pos) {
 			if (entityPlacement.ContainsKey(item.id)) {
 				RedrawAction(simulation, item.id, pos, 
@@ -298,8 +290,7 @@ namespace Visualization {
 			while (nextTile >= 0) {
 				var nextPos = new Vector2Int(nextTile % width, nextTile / width);
 				var nextTileItem = simulation.Field[nextPos.x, nextPos.y];
-				if (nextTileItem.type != FieldItem.ItemType.Snake)
-					throw new System.Exception();
+				if (nextTileItem.type != FieldItem.ItemType.Snake) throw new System.Exception();
 
 				placement.AddLast(nextPos);
 				nextTile = nextTileItem.prevNeighborPos;

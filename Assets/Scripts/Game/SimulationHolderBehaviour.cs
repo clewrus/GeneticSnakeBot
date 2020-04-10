@@ -22,7 +22,7 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 		//simulator.ObservedPlayer = FindObjectOfType<HumanPlayer>();
 		simulator.Visualizer = FindObjectOfType<Visualizer>();
 
-		for (int i = 0; i < 35; i++) {
+		for (int i = 0; i < 1; i++) {
 			var nwBot = new PlayerMechanism.SimpleBot();
 			simulator.AddPlayer(nwBot);
 			simulator.ObservedPlayer = nwBot;
@@ -33,8 +33,14 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 
 	private IEnumerator SimulationUpdater () {
 		while (true) {
-			yield return new WaitForSeconds(0.2f);
+			yield return new WaitForSeconds(0.5f);
 			simulator.MakeStep();
+		}
+	}
+
+	private void Update () {
+		if (simulator.TryGetObservedPlayerScoreInfo(out var scoreInfo)) {
+			Debug.Log(scoreInfo);
 		}
 	}
 }

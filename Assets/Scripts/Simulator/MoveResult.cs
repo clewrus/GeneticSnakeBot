@@ -4,6 +4,7 @@ namespace Simulator {
 	public struct MoveResult {
 		public int id;
 		public float value;
+		public float eatenValue;
 
 		public Vector2Int headPos;
 		public MoveInfo.Direction headDir;

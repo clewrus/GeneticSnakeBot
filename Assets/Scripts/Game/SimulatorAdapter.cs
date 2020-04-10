@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 namespace Game {
 	public class SimulatorAdapter {
 		private Simulator.Simulation m_Simulation;
+		private Simulator.IScorer m_Scorer;
 		private Visualization.Visualizer m_Visualizer;
 		private Simulator.IPlayer m_ObservedPlayer;
 		private Visualization.IVisualizerObserver m_ObservingCamera;
@@ -18,6 +19,7 @@ namespace Game {
 		#region Properties
 
 		public Visualizable.IVisualizable Simulation { get => m_Simulation; }
+		public Simulator.IScorer Scorer { get => m_Scorer; }
 
 		public Visualization.Visualizer Visualizer {
 			get => m_Visualizer;
@@ -47,8 +49,10 @@ namespace Game {
 
 		public SimulatorAdapter (int width, int height, int seed) {
 			this.m_Simulation = new Simulator.Simulation(width, height, seed);
+			this.m_Scorer = new Simulator.SinglePlayerScorer();
 			this.localPort = new Simulator.NormalPlayersPort();
 
+			localPort.Scorer = m_Scorer;
 			m_Simulation.AddPlayerPort(localPort);
 		}
 
@@ -60,6 +64,24 @@ namespace Game {
 
 		public void MakeStep () {
 			m_Simulation.MakeStep();
+		}
+
+
+		public bool TryGetObservedPlayerScoreInfo (out (float score, float? multiplier) scoreInfo) {
+			scoreInfo = (-1, null);
+
+			if (m_Scorer is Simulator.SinglePlayerScorer singePlayerScorer) {
+				if (singePlayerScorer.TryGetCurrentMultiplier(m_ObservedPlayer, out float multiplier)) {
+					scoreInfo.multiplier = multiplier;
+				}
+			}
+
+			if (m_Scorer.TryGetScore(m_ObservedPlayer, out float score)) {
+				scoreInfo.score = score;
+				return true;
+			}
+
+			return false;
 		}
 
 		#region Properties update methods
