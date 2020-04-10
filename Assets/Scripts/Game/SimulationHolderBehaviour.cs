@@ -19,15 +19,21 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 		simulator = new SimulatorAdapter(width, height, 228);
 
 		simulator.ObservingCamera = Camera.main.GetComponent<IVisualizerObserver>();
-		simulator.ObservedPlayer = FindObjectOfType<HumanPlayer>();
+		//simulator.ObservedPlayer = FindObjectOfType<HumanPlayer>();
 		simulator.Visualizer = FindObjectOfType<Visualizer>();
+
+		for (int i = 0; i < 35; i++) {
+			var nwBot = new PlayerMechanism.SimpleBot();
+			simulator.AddPlayer(nwBot);
+			simulator.ObservedPlayer = nwBot;
+		}
 
 		StartCoroutine(SimulationUpdater());
 	}
 
 	private IEnumerator SimulationUpdater () {
 		while (true) {
-			yield return new WaitForSeconds(0.8f);
+			yield return new WaitForSeconds(0.2f);
 			simulator.MakeStep();
 		}
 	}

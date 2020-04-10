@@ -297,8 +297,12 @@ namespace Visualization {
 			int width = simulation.Width;
 			while (nextTile >= 0) {
 				var nextPos = new Vector2Int(nextTile % width, nextTile / width);
+				var nextTileItem = simulation.Field[nextPos.x, nextPos.y];
+				if (nextTileItem.type != FieldItem.ItemType.Snake)
+					throw new System.Exception();
+
 				placement.AddLast(nextPos);
-				nextTile = simulation.Field[nextPos.x, nextPos.y].prevNeighborPos;
+				nextTile = nextTileItem.prevNeighborPos;
 			}
 
 			return placement;

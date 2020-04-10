@@ -146,7 +146,7 @@ namespace Simulator {
 			FillDiscreteProjection(discreteProjection.food, flatFood, cellWidth);
 			FillDiscreteProjection(discreteProjection.wall, flatWalls, cellWidth);
 			FillDiscreteProjection(discreteProjection.snake, ExtractDensity(flatSnakes), cellWidth);
-			FillDiscreteProjection(discreteProjection.kinship, ExtractKinship(flatSnakes), cellWidth);
+			FillDiscreteProjection(discreteProjection.kinship, ExtractKinship(flatSnakes), cellWidth, dontStretchOne:true);
 
 			return discreteProjection;
 		}
@@ -232,22 +232,38 @@ namespace Simulator {
 		private void FillDiscreteProjection (
 			float[] discrete,
 			IEnumerable<(float start, float end, float value)> projection,
-			float cellWidth
+			float cellWidth,
+			bool dontStretchOne=false
 		) {
 			foreach (var piece in projection) {
 				int startIndex = (int)(piece.start / cellWidth);
 				int endIndex = (int)(piece.end / cellWidth);
 
 				if (startIndex == endIndex) {
-					discrete[startIndex] += (piece.end - piece.start) * piece.value;
+					if (dontStretchOne && piece.value == 1) {
+						discrete[startIndex] = 1;
+					} else {
+						discrete[startIndex] += piece.value * ((piece.end - piece.start) / cellWidth);
+					}
+					
 					continue;
 				}
 
-				discrete[startIndex] += ((startIndex + 1) * cellWidth - piece.start) * piece.value;
-				for (int i = startIndex + 1; i < endIndex; i++) {
-					discrete[i] += cellWidth * piece.value;
+				if (dontStretchOne && piece.value == 1) {
+					discrete[startIndex] = 1;
+				} else {
+					discrete[startIndex] += piece.value * ((startIndex + 1) - piece.start / cellWidth);
 				}
-				discrete[endIndex] += (piece.end - endIndex * cellWidth) * piece.value;
+
+				for (int i = startIndex + 1; i < endIndex; i++) {
+					discrete[i] += piece.value;
+				}
+
+				if (dontStretchOne && piece.value == 1) {
+					discrete[endIndex] = 1;
+				} else {
+					discrete[endIndex] += piece.value * (piece.end / cellWidth - endIndex);
+				}
 			}
 		}
 

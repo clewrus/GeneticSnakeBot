@@ -206,15 +206,21 @@ namespace Simulator {
 		private void UpdateSnake (int id, MoveInfo moveInfo) {
 			Vector2Int oldHeadPos;
 			bool isNewSnake = false;
-			if (!idToFieldPos.TryGetValue(id, out oldHeadPos) && !deadSnakes.Contains(id)) {
+
+			if (deadSnakes.Contains(id)) return;
+			if (!idToFieldPos.TryGetValue(id, out oldHeadPos)) {
 				oldHeadPos = AddNewSnake(id);
 				idToPort.Add(id, FindSnakePort(id));
 				isNewSnake = true;
 			}
 
+			var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
+			if (oldHeadItem.type == FieldItem.ItemType.None)
+				throw new System.Exception();
+			if (oldHeadItem.frameOfLastUpdate == curFrame) return;
+
 			if (!ManageValueCost(id, moveInfo.valueUsed)) return;            
 
-			var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
 			var selectedDir = (moveInfo.dir==MoveInfo.Direction.None)? oldHeadItem.dir: moveInfo.dir;
 			bool skipMove = (selectedDir == OppositDirection(oldHeadItem.dir));
 
@@ -294,23 +300,20 @@ namespace Simulator {
 
 			if (hitted.type == FieldItem.ItemType.Snake) {
 				if ((hitted.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
-					removedEntities.Add(nwItem.id);
-					idToFieldPos.Remove(nwItem.id);
-
-					deadSnakes.Add(hitted.id);
-					removedEntities.Add(hitted.id);
-					idToFieldPos.Remove(hitted.id);
-
-					BiteOffSnake(oldPos, field[oldPos.x, oldPos.y]);
-					BiteOffSnake(nwPos, hitted);
-
+					RemoveSnake(oldPos, nwItem.id);
+					RemoveSnake(nwPos, hitted.id);
 					return;
 				}
 
-				BiteOffSnake(nwPos, hitted);
-
 				var hittedHeadPos = idToFieldPos[hitted.id];
-				unchecked { field[hittedHeadPos.x, hittedHeadPos.y].flags |= (byte)FieldItem.Flag.Shortened; }
+				var hittedHead = field[hittedHeadPos.x, hittedHeadPos.y];
+
+				if (hittedHead.prevNeighborPos == width*nwPos.y + nwPos.x) {
+					RemoveSnake(hittedHeadPos, hitted.id);
+				} else {
+					BiteOffSnake(nwPos, hitted);
+					unchecked { field[hittedHeadPos.x, hittedHeadPos.y].flags |= (byte)FieldItem.Flag.Shortened; }
+				}
 
 				hitted = field[nwPos.x, nwPos.y];
 			}
@@ -323,12 +326,24 @@ namespace Simulator {
 			MoveHead(oldPos, nwPos, hitted, nwItem);
 		}
 
+		private void RemoveSnake (Vector2Int headPos, int id) {
+			RemoveEntityTail(headPos);
+			deadSnakes.Add(id);
+			removedEntities.Add(id);
+			idToFieldPos.Remove(id);
+		}
+
 		private void BiteOffSnake (Vector2Int startPos, FieldItem hitted) {
-			var curPos = idToFieldPos[hitted.id];
-			var curItem = field[curPos.x, curPos.y];
+			var initPos = idToFieldPos[hitted.id];
+			var curPos = initPos;
+
+			var initItem = field[curPos.x, curPos.y];
+			var curItem = initItem;
 
 			int bitedTile = startPos.y * width + startPos.x;
+
 			while (curItem.prevNeighborPos != bitedTile) {
+				if (curItem.type != FieldItem.ItemType.Snake) throw new System.Exception(); 
 				int prevTile = curItem.prevNeighborPos;
 
 				curPos = new Vector2Int(prevTile % width, prevTile / width);
@@ -339,15 +354,16 @@ namespace Simulator {
 			var clearedPos = new List<Vector2Int>(16);
 			RemoveEntityTail(startPos, (pos) => clearedPos.Add(pos));
 
-			idToCurLength[hitted.id] -= clearedPos.Count;
-			ScatterSnakeTail(hitted, clearedPos);
+			ScatterSnakeTail(hitted, clearedPos);			
 		}
 
 		private void ScatterSnakeTail (FieldItem hitted, List<Vector2Int> foodPos) {
 			var foodVal = idToValue[hitted.id] / idToCurLength[hitted.id];
-			var totalValueDelta = foodPos.Count * foodVal;
+			idToCurLength[hitted.id] -= foodPos.Count;
 
+			var totalValueDelta = foodPos.Count * foodVal;
 			idToValue[hitted.id] -= totalValueDelta;
+
 			foreach (var nwPos in foodPos) {
 				var nwId = GetNextId();
 				idToFieldPos.Add(nwId, nwPos);
@@ -390,17 +406,15 @@ namespace Simulator {
 				UpdateFieldItem(tarPos.x, tarPos.y, default);
 				onRemove?.Invoke(tarPos);
 
+				if (nxtPos == tarItem.prevNeighborPos) throw new System.Exception();
+
 				nxtPos = tarItem.prevNeighborPos;
 			}
 		}
 
 		private bool ManageValueCost (int id, float valueUsed) {
 			float currentValue = idToValue[id];
-			if (currentValue >= 0) {
-				if (currentValue < valueUsed) {
-					RemoveEntityTail(idToFieldPos[id]);
-				}
-				
+			if (currentValue >= 0) {				
 				currentValue = (float)System.Math.Round((double)(currentValue - valueUsed), 6);
 				idToValue[id] = currentValue;
 			}
@@ -408,6 +422,11 @@ namespace Simulator {
 			if (currentValue < 0) {
 				deadSnakes.Add(id);
 				removedEntities.Add(id);
+
+				if (idToFieldPos.TryGetValue(id, out Vector2Int headPos)) {
+					RemoveEntityTail(headPos);
+				}
+
 				idToFieldPos.Remove(id);
 				return false;
 			}
@@ -443,7 +462,10 @@ namespace Simulator {
 			Vector2Int prevPos = new Vector2Int(-1, -1);
 			Vector2Int curPos = oldHeadPos;
 
+			int count = 0;
 			while (true) {
+				if (count++ > 100) throw new System.Exception();
+				
 				field[curPos.x, curPos.y].frameOfLastUpdate = curFrame;
 				int nextPosIndex = field[curPos.x, curPos.y].prevNeighborPos;
 
@@ -491,9 +513,7 @@ namespace Simulator {
 				bool invertedPlacement = Random.value > 0.5f;
 				MoveInfo.Direction dir = ChooseDirection(vertPlacement, invertedPlacement);
 
-				int curX = 0;
-				int curY = 0;
-
+				int curX, curY;
 				if (invertedPlacement) {
 					curX = Random.Range(((vertPlacement)? 0: targetLength)+SPAWN_BORDER, width-SPAWN_BORDER);
 					curY = Random.Range(((vertPlacement)? targetLength: 0)+SPAWN_BORDER, height-SPAWN_BORDER);

@@ -102,7 +102,7 @@
 			}
 
 			float f3 (float u) {
-				float A = 1 - _EdgeOffset - _HeadConfig.z;
+				float A = 0.8 - _HeadConfig.z;
 				
 				return A * cos((PI/2) * u/_HeadConfig.w);
 			}
