@@ -36,7 +36,7 @@
 
 		float3 mask = lerp(col1, col2, mainMask);
 
-		float shadeK = 0.5;
+		float shadeK = 0.8;
 		mask *= 1 - shadeK * abs(relR);
 
 		return mask;

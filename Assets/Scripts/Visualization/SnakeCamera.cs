@@ -98,6 +98,7 @@ namespace Visualization {
 
 		private void InitializeBackground () {
 			var background = new GameObject("Background", typeof(MeshFilter), typeof(MeshRenderer));
+			background.layer = gameObject.layer;
 
 			background.GetComponent<MeshFilter>().mesh = new Mesh() {
 				vertices = new Vector3[] { -0.5f*Vector2.one, Vector2.up-0.5f*Vector2.one, 0.5f*Vector2.one, Vector2.right-0.5f*Vector2.one },

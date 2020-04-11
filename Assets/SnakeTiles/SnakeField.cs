@@ -131,9 +131,11 @@ namespace Visualization {
 		private void FillField () {
 			for (int i = 0; i < instancedTiles.GetLength(0); i++) {
 				for (int j = 0; j < instancedTiles.GetLength(1); j++) {
-					var nwTile = GameObject.Instantiate(tilePrefab, this.transform, false);
-					instancedTiles[i, j] = nwTile;
 
+					var nwTile = Instantiate(tilePrefab, this.transform, false);
+					nwTile.layer = gameObject.layer;
+
+					instancedTiles[i, j] = nwTile;
 					TransformTile(nwTile, i, j);
 				}
 			}

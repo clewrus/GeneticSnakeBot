@@ -11,8 +11,6 @@ public class SimulationHolderBehaviour : MonoBehaviour {
 	[SerializeField] private int width = 100;
 	[SerializeField] private int height = 100;
 
-	[SerializeField] private GameObject[] observers = null;
-
 	private SimulatorAdapter simulator;
 
 	private void Start () {

@@ -75,7 +75,7 @@
 
 				float bodyR = 0.5 - _EdgeOffset;
 
-				float shadeK = 0.5;
+				float shadeK = 0.8;
 				float shade = (bodyR - shadeK * r) / (bodyR - shadeK * abs(uv.x));
 				float tailTipMask = shade * S(_EdgeBlur, 0, r - bodyR);
 

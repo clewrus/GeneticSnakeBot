@@ -30,13 +30,12 @@ namespace Visualization {
 			if (lastSimulation != simulation) {
 				lastSimulation = simulation;
 				SynchronizeWithSimulation(simulation);
-				return;
-			}
+			} else {
+				recentlyRemoved.Clear();
 
-			recentlyRemoved.Clear();
-
-			foreach (var pos in updatedPositions) {
-				RedrawEntity(simulation, new Vector2Int(pos.x, pos.y));
+				foreach (var pos in updatedPositions) {
+					RedrawEntity(simulation, new Vector2Int(pos.x, pos.y));
+				}
 			}
 
 			UpdateObservers();

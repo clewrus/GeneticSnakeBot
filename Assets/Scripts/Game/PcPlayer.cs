@@ -1,16 +1,18 @@
-﻿using System.Collections;
+﻿using Simulator;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 
 using UnityEngine;
 
-namespace Simulator {
-	public class HumanPlayer : MonoBehaviour, IPlayer {
-		SnakeInfo info;
-		MoveInfo moveInfo;
+namespace Game {
+	public class PcPlayer : MonoBehaviour, IPlayer, IHumanPlayer {
+		public SnakeInfo info;
+		private MoveInfo moveInfo;
+
+		public EventHandler DirectionSelected { get; set; }
 
 		public bool NeedsProjection => false;
-
-		public int? KnownId { get; private set; }
 
 		private void Awake () {
 			info = new SnakeInfo {
@@ -43,27 +45,25 @@ namespace Simulator {
 			return info;
 		}
 
-		public void HandleMoveResult (MoveResult result) {
-			if (KnownId == null) {
-				KnownId = result.id;
-			}
-
-			Debug.Log($"HumanPlayer HandleMove {result}");
-		}
+		public void HandleMoveResult (MoveResult result) { }
 
 		public MoveInfo MakeMove (MoveInfo.Direction dir, Projection playerInput) {
 			return moveInfo;
 		}
 
+		private void OnDirectionSelected () {
+			DirectionSelected?.Invoke(this, new EventArgs());
+		}
+
 		private void UpdateMoveInfo () {
 			var dir = Vector2.zero;
-			if (Input.GetKeyDown(KeyCode.W)) {
+			if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) {
 				dir += Vector2.up;
-			} if (Input.GetKeyDown(KeyCode.S)) {
+			} if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow)) {
 				dir += Vector2.down;
-			} if (Input.GetKeyDown(KeyCode.A)) {
+			} if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow)) {
 				dir += Vector2.left;
-			} if (Input.GetKeyDown(KeyCode.D)) {
+			} if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow)) {
 				dir += Vector2.right;
 			}
 
@@ -77,6 +77,10 @@ namespace Simulator {
 				moveInfo.dir = MoveInfo.Direction.Up;
 			} else if (dir.y < 0) {
 				moveInfo.dir = MoveInfo.Direction.Down;
+			}
+
+			if (dir != Vector2.zero) {
+				OnDirectionSelected();
 			}
 		}
 	}
