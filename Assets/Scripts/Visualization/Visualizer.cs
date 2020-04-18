@@ -429,15 +429,16 @@ namespace Visualization {
 
 		private void RemoveFromPlacement (Vector2Int pos) {
 			if (positionToPlacementId.TryGetValue(pos, out int id)) {
-				var foundList = entityPlacement[id];
-
 				recentlyRemoved.Add(id);
-				foundList.Remove(pos);
 
-				if (foundList.Count == 0) {
-					positionToPlacementId.Remove(pos);
-					entityPlacement.Remove(id);
-				}				
+				if (entityPlacement.TryGetValue(id, out var foundList)) {
+					foundList.Remove(pos);
+
+					if (foundList.Count == 0) {
+						positionToPlacementId.Remove(pos);
+						entityPlacement.Remove(id);
+					}
+				}			
 			}
 		}
 

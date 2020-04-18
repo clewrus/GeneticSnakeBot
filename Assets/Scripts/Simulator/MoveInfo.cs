@@ -16,5 +16,9 @@ namespace Simulator {
 			this.dir = dir;
 			this.snakeInfo = info;
 		}
+
+		public override string ToString () {
+			return $"{id} {dir} {valueUsed}";
+		}
 	}
 }

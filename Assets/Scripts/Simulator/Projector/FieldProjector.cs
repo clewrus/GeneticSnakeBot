@@ -12,19 +12,12 @@ namespace Simulator {
 		private SquareTree fieldTree;
 		private System.Func<int, SnakeInfo> GetSnakeInfo;
 
-		#region Buffers
-
-		private List<(int x, int y)> visiblePositions;
-
-		#endregion
-
 		public FieldProjector (FieldItem[,] field, System.Func<int, SnakeInfo> GetSnakeInfo) {
 			this.field = field;
 			this.width = field.GetLength(0);
 			this.height = field.GetLength(1);
 
 			this.GetSnakeInfo = GetSnakeInfo;
-			visiblePositions = new List<(int x, int y)>();
 
 			fieldTree = new SquareTree(-1, -1, this.width + 2, this.height + 2);
 			AddBorder();
@@ -47,7 +40,7 @@ namespace Simulator {
 			float halfViewAngle,
 			int eyeQuality
 		) {
-			visiblePositions.Clear();
+			var visiblePositions = new List<(int x, int y)>();
 			fieldTree.FindItemsInCircle(pos.x, pos.y, cullingDistance, visiblePositions);
 
 			var dirVec = DirToVec(dir);

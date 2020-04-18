@@ -16,6 +16,11 @@ namespace Simulator {
 		public ScuamaPatern scuamaPatern;
 
 		public static float CalcKindship (SnakeInfo a, SnakeInfo b) {
+			if (a == null || b == null) {
+				Debug.LogWarning("CalcKindship method got null as its argument");
+				return 0;
+			}
+
 			float distance = 0.7f * ScuamaPatern.SqrDistance(a.scuamaPatern, b.scuamaPatern);
 			distance += 0.3f * Mathf.Pow(a.maxLength - b.maxLength, 2);
 

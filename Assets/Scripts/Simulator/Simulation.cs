@@ -62,7 +62,7 @@ namespace Simulator {
 			this.width = width;
 			this.height = height;
 
-			fieldProjector = new FieldProjector(field, (id) => idToSnakeInfo[id]);
+			fieldProjector = new FieldProjector(field, (id) => (idToSnakeInfo.TryGetValue(id, out SnakeInfo snakeInfo)) ? snakeInfo : null);
 			fieldProjector.UpdateAtPositions(Vector2IntToTuple(idToFieldPos.Values));
 
 			playersPorts = new List<IPlayersPort>();
@@ -296,8 +296,9 @@ namespace Simulator {
 			uint initFlag = field[oldPos.x, oldPos.y].flags;
 			var hitted = field[nwPos.x, nwPos.y];
 
-			if (hitted.frameOfLastUpdate < curFrame) {
-				UpdateSnake(hitted.id, curMovesDictBuffer[hitted.id]);
+			if (hitted.frameOfLastUpdate < curFrame && curMovesDictBuffer.TryGetValue(hitted.id, out var hittedMoveInfo)) {
+
+				UpdateSnake(hitted.id, hittedMoveInfo);
 				hitted = field[nwPos.x, nwPos.y];
 
 				if (removedEntities.Contains(nwItem.id)) return;

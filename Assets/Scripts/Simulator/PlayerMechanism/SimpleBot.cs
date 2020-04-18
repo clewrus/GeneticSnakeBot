@@ -10,7 +10,7 @@ namespace PlayerMechanism {
 				halfViewAngle = 0.75f * 3.1416f,
 				eyeQuality = 9,
 				denseLayerSize = 0,
-				cullingDistance = 10,
+				cullingDistance = 7,
 				scuamaPatern = new SnakeInfo.ScuamaPatern {
 					giroid0 = (Random.Range(0.1f, 2), Random.Range(0.1f, 2)),
 					giroid1 = (Random.Range(0.1f, 2), Random.Range(0.1f, 2)),
@@ -56,13 +56,16 @@ namespace PlayerMechanism {
 			int selectedIndex = -1;
 			float value = float.NegativeInfinity;
 
+			int k = (proj.eyeQuality / 2);
 			for (int i = 0; i < proj.eyeQuality; i++) {
-				float foodValue = proj.food[i] - proj.wall[i];
-				float snakeValue = (proj.kinship[i] < 0.01f) ? proj.snake[i] - proj.wall[i] : float.NegativeInfinity;
+				k += (i % 2 == 0) ? +i : -i;
+
+				float foodValue = proj.food[k] - proj.wall[k];
+				float snakeValue = (proj.kinship[k] < 0.01f) ? proj.snake[k] - proj.wall[k] : float.NegativeInfinity;
 
 				float curValue = Mathf.Max(2 * snakeValue, foodValue);
 				if (value < curValue) {
-					selectedIndex = i;
+					selectedIndex = k;
 					value = curValue;
 				}
 			}

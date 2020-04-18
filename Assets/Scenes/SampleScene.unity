@@ -700,8 +700,8 @@ MonoBehaviour:
   startMenu: {fileID: 1311961229}
   loadingMenu: {fileID: 518857420}
   visualizer: {fileID: 1878758460}
-  width: 100
-  height: 100
+  width: 80
+  height: 80
   numberOfBots: 60
 --- !u!4 &504720670
 Transform:

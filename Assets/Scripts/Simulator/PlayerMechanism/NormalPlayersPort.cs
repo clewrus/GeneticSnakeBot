@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Simulator {
@@ -10,13 +11,20 @@ namespace Simulator {
 
 		private Dictionary<int, IPlayer> idToPlayer;
 		private Dictionary<IPlayer, int> playerToId;
+		private List<(int id, IPlayer player)> orderedIdPlayer;
 
 		private Dictionary<int, (Vector2Int headPos, MoveInfo.Direction headDir)> idToHeadInfo;
+
+		private int? availableCores;
 
 		public NormalPlayersPort () {
 			idToPlayer = new Dictionary<int, IPlayer>();
 			playerToId = new Dictionary<IPlayer, int>();
+			orderedIdPlayer = new List<(int id, IPlayer player)>(30);
+
 			idToHeadInfo = new Dictionary<int, (Vector2Int, MoveInfo.Direction)>();
+
+			availableCores = System.Environment.ProcessorCount;
 		}
 
 		public void AddPlayer (IPlayer player) {
@@ -25,6 +33,7 @@ namespace Simulator {
 			int id = GetNextId();
 			this.idToPlayer.Add(id, player);
 			this.playerToId.Add(player, id);
+			this.orderedIdPlayer.Add((id, player));
 
 			this.idToHeadInfo.Add(id, (Vector2Int.zero, MoveInfo.Direction.None));
 		}
@@ -43,6 +52,7 @@ namespace Simulator {
 			var player = idToPlayer[id];
 			idToPlayer.Remove(id);
 			playerToId.Remove(player);
+			orderedIdPlayer.Remove((id, player));
 
 			idToHeadInfo.Remove(id);
 		}
@@ -66,34 +76,56 @@ namespace Simulator {
 		public List<MoveInfo> MakeMove (FieldProjector projector) {
 			var moveInfos = new List<MoveInfo>(idToPlayer.Count);
 
-			foreach (var id_player in idToPlayer) {
-				if (idToHeadInfo[id_player.Key].headDir == MoveInfo.Direction.None) {
-					moveInfos.Add(new MoveInfo { id = id_player.Key, valueUsed = 0f });
-					continue;
-				}
+			var numOfTasks = availableCores.Value;
+			var moveTasks = new Task[numOfTasks];
 
-				var proj = default(Projection);
-				var headInfo = idToHeadInfo[id_player.Key];
+			int nxtOffset = 0;
+			object lockForNxtOffset = new object();
 
-				if (id_player.Value.NeedsProjection) {				
-					var snakeInfo = id_player.Value.GetSnakeInfo();
-					proj = projector.CalcSnakeView(
-						pos: (headInfo.headPos.x, headInfo.headPos.y), 
-						dir: headInfo.headDir, 
-						cullingDistance: snakeInfo.cullingDistance, 
-						halfViewAngle: snakeInfo.halfViewAngle,
-						eyeQuality: snakeInfo.eyeQuality
-					);
-				}
+			for (int k = 0; k < numOfTasks; ++k) {
+				moveTasks[k] = Task.Run(() => {
+					int offset = 0;
+					lock(lockForNxtOffset) {
+						offset = nxtOffset++;
+					}
 
-				var move = id_player.Value.MakeMove(headInfo.headDir, proj);
-				move.id = id_player.Key;
-				move.valueUsed = 0.1f;
+					for (int i = offset; i < orderedIdPlayer.Count; i += numOfTasks) {
+						(int id, IPlayer player) = orderedIdPlayer[i];
 
-				moveInfos.Add(move);
+						var move = EvaluatePlayerMove(projector, id, player);
+						moveInfos.Add(move);
+					}
+				});
 			}
 
+			Task.WhenAll(moveTasks).Wait();
 			return moveInfos;
+		}
+
+		private MoveInfo EvaluatePlayerMove (FieldProjector projector, int id, IPlayer player) {
+			if (idToHeadInfo[id].headDir == MoveInfo.Direction.None) {
+				return new MoveInfo { id = id, valueUsed = 0f };
+			}
+
+			var proj = default(Projection);
+			var headInfo = idToHeadInfo[id];
+
+			if (player.NeedsProjection) {
+				var snakeInfo = player.GetSnakeInfo();
+				proj = projector.CalcSnakeView(
+					pos: (headInfo.headPos.x, headInfo.headPos.y),
+					dir: headInfo.headDir,
+					cullingDistance: snakeInfo.cullingDistance,
+					halfViewAngle: snakeInfo.halfViewAngle,
+					eyeQuality: snakeInfo.eyeQuality
+				);
+			}
+
+			var move = player.MakeMove(headInfo.headDir, proj);
+			move.id = id;
+			move.valueUsed = 0.1f;
+
+			return move;
 		}
 
 		public SnakeInfo GetSnakeInfo (int id) {
