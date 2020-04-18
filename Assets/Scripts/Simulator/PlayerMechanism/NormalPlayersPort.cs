@@ -75,7 +75,6 @@ namespace Simulator {
 
 		public List<MoveInfo> MakeMove (FieldProjector projector) {
 			var moveInfos = new List<MoveInfo>(idToPlayer.Count);
-
 			var numOfTasks = availableCores.Value;
 			var moveTasks = new Task[numOfTasks];
 

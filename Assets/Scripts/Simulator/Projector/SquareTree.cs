@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 namespace Simulator {
 	public class SquareTree {
 
+		private readonly int ITEMS_IN_CONTENT = 8;
+
 		#region Fields
 		private Dictionary<(int x, int y), SquareTree> allItems;
 
@@ -18,9 +20,6 @@ namespace Simulator {
 
 		private int contentCount;
 		private (int x, int y)[] content;
-
-
-		private readonly int ITEMS_IN_CONTENT = 8;
 		#endregion
 
 		private SquareTree (Dictionary<(int x, int y), SquareTree> itemsDictionary) {
@@ -44,16 +43,22 @@ namespace Simulator {
 
 			if (allItems.ContainsKey((x, y))) return true;
 
+			if (hasChildren) {
+				return children[FindChildIndex(x, y)].Add(x, y);
+			}
+			
 			if (contentCount < ITEMS_IN_CONTENT) {
 				content[contentCount++] = (x, y);
 				allItems.Add((x, y), this);
 				return true;
 			}
 
-			if (!hasChildren) {
-				hasChildren = true;
-				InitializeChildren();
-			}
+			hasChildren = true;
+			InitializeChildren();
+			RedistributeContent();
+
+			contentCount = 0;
+			content = null;
 
 			return children[FindChildIndex(x, y)].Add(x, y);
 		}
@@ -63,16 +68,18 @@ namespace Simulator {
 			if (!HasIntersection(x, y, R)) return 0;
 
 			int foundCount = 0;
-			for (int i = 0; i < contentCount; i++) {
-				if (System.Math.Pow(x - content[i].x, 2) + System.Math.Pow(y - content[i].y, 2) < R * R) {
-					++foundCount;
-					foundItems.Add(content[i]);
-				}
-			}
 
 			if (hasChildren) {
 				for (int i = 0; i < children.Length; i++) {
 					foundCount += children[i].FindItemsInCircle(x, y, R, foundItems);
+				}
+			} else {
+				for (int i = 0; i < contentCount; i++) {
+					int deltaX = x - content[i].x, deltaY = y - content[i].y;
+					if (deltaX * deltaX + deltaY * deltaY < R * R) {
+						++foundCount;
+						foundItems.Add(content[i]);
+					}
 				}
 			}
 
@@ -108,11 +115,28 @@ namespace Simulator {
 		#endregion
 
 		private bool HasIntersection (int x, int y, float R) {
-			(float x, float y) halfDim = ((float)dimentions.x / 2f, (float)dimentions.y / 2f);
-			(float x, float y) center = (minCorner.x + halfDim.x, minCorner.y + halfDim.y);
+			(int x, int y) maxCorner = (minCorner.x + dimentions.x - 1, minCorner.y + dimentions.y - 1);
+			if (minCorner.x <= x && x <= maxCorner.x && minCorner.y <= y && y <= maxCorner.y) return true;
 
-			float circumscribedR = halfDim.x * halfDim.x + halfDim.y * halfDim.y;
-			return (center.x-x)*(center.x-x) + (center.y-y)*(center.y-y) <= (circumscribedR+R)*(circumscribedR+R);
+			System.Func<int, int, int> MinAbs = (int a, int b) => {
+				int aAbs = (a < 0) ? -a : a;
+				int bAbs = (b < 0) ? -b : b;
+				return (aAbs < bAbs) ? aAbs : bAbs;
+			};
+
+			if (minCorner.x <= x && x <= maxCorner.x) {
+				int absDelta = MinAbs(y - minCorner.y, y - maxCorner.y);
+				return absDelta < R;
+			} else if (minCorner.y <= y && y <= maxCorner.y) {
+				int absDelta = MinAbs(x - minCorner.x, x - maxCorner.x);
+				return absDelta < R;
+			}
+
+			int deltaX = MinAbs(x - minCorner.x, x - maxCorner.x);
+			int deltaY = MinAbs(y - minCorner.y, y - maxCorner.y);
+
+			return deltaX * deltaX + deltaY * deltaY <= R * R;
+
 		}
 
 		private int FindChildIndex (int x, int y) {
@@ -140,6 +164,14 @@ namespace Simulator {
 			children[1] = GetNewNode(m.x, m.y + d.y/2, d.x/2, (d.y+1)/2);
 			children[2] = GetNewNode(m.x, m.y, d.x/2, d.y/2);
 			children[3] = GetNewNode(m.x + d.x/2, m.y, (d.x+1)/2, d.y/2);
+		}
+
+		private void RedistributeContent () {
+			foreach (var item in content) {
+				var suitedChild = children[FindChildIndex(item.x, item.y)];
+				allItems.Remove(item);
+				suitedChild.Add(item.x, item.y);
+			}
 		}
 
 		private SquareTree GetNewNode (int minX, int minY, int width, int height) {
