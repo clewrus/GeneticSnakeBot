@@ -11,6 +11,7 @@
 		_EdgeShade ("Shade on the edges", Range(0.01, 2)) = 0.3
 		_WallRoundness ("Roundness of wall edge", Range(0, 1)) = 1
 		[Space]
+		_Color ("Color multier", Color) = (1, 1, 1, 1)
 		_Color1 ("The first key color", Color) = (1, 0.45, 0.05, 1)
 		_Color2 ("The second key color", Color) = (1, 0.05, 0.05, 1)
 	}
@@ -64,6 +65,7 @@
 			float _EdgeShade;
 			float _WallRoundness;
 
+			fixed4 _Color;
 			fixed4 _Color1;
 			fixed4 _Color2;
 
@@ -155,10 +157,10 @@
 				i.worldPos.xy += (0 < Y && Y < R) * worldUp * (R * asin(clamp(Y/R, -1, 1)) - Y);
 				float4 noise = VoronoiNoise(i.worldPos.xy, _CellSize, 228);
 
-				fixed3 cellColor = lerp(_Color1.rgb, _Color2.rgb, noise.z);
+				fixed3 cellColor = _Color.rgb * lerp(_Color1.rgb, _Color2.rgb, noise.z);
 				cellColor *= max(type == 3, pow(clamp((1 - Y / R), 0, 1), _EdgeShade));
 
-				cellColor *= pow(noise.y, _BorderWidth);
+				cellColor *= _Color.a * pow(noise.y, _BorderWidth);
 				return mask * fixed4(cellColor, 1);
 			}
 			ENDCG
