@@ -18,7 +18,7 @@
 
 	SubShader
 	{
-		Tags { "RenderType"="Transparent" "Queue" = "Transparent"}
+		Tags { "RenderType"="Transparent" "Queue" = "AlphaTest"}
 		Blend SrcAlpha OneMinusSrcAlpha
 
 		Pass
@@ -51,7 +51,7 @@
 				return o;
 			}
 
-			#include "VoronoiNoise.cginc"
+			#include "SnakeTiles/VoronoiNoise.cginc"
 
 			#define C (sqrt(2.)/2.)
 
@@ -93,7 +93,7 @@
 					} break;
 				}
 
-				uv += float2(uv.x < 0, uv.y < 0);
+				uv += float2(uv.x <= 0, uv.y <= 0);
 				float2 uvP = float2(C*((uv.x-1) + uv.y), C*(-(uv.x-1) + uv.y));
 
 				float offset = _OffsetWidth;

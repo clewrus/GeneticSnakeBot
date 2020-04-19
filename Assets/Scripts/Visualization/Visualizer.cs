@@ -26,6 +26,12 @@ namespace Visualization {
 			commonFoodMaterial = new Material(shaders.foodShader);
 		}
 
+		public void Clear () {
+			lastSimulation = null;
+			field.FieldSize = Vector2Int.zero;
+			field.ClearTilesMaterials();
+		}
+
 		public void SimulationUpdateHandler (IVisualizable simulation, IEnumerable<(int x, int y)> updatedPositions) {
 			if (lastSimulation != simulation) {
 				lastSimulation = simulation;

@@ -12,7 +12,7 @@
 	}
 	SubShader
 	{
-		Tags { "RenderType" = "Transparent" "Queue" = "Transparent"}
+		Tags { "RenderType" = "Transparent" "Queue" = "AlphaTest"}
 		Blend SrcAlpha OneMinusSrcAlpha
 
 		Pass

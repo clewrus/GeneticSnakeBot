@@ -22,6 +22,16 @@ namespace Visualization {
 		[Space]
 		[SerializeField] private Material backgroundMaterial = null;
 
+		public void Restart () {
+			if (cameraMovingCoroutine != null) {
+				StopCoroutine(cameraMovingCoroutine);
+				cameraMovingCoroutine = null;
+			}
+
+			timeOfLastUpdate = null;
+			previousMoveDuration = null;
+		}
+
 		public void PlacementChangedHandler (IEnumerable<Vector2Int> placement, bool exists, bool wasRemovedRecently) {
 			if (!exists) return;
 
@@ -84,6 +94,12 @@ namespace Visualization {
 		}
 
 		private void OnPreRender () {
+			if (backgroundMaterial != null) {
+				UpdateBackground();
+			}
+		}
+
+		private void UpdateBackground () {
 			if (backgroundTransform == null) {
 				InitializeBackground();
 			}
