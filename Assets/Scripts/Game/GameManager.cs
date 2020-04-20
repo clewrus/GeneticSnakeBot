@@ -12,6 +12,7 @@ namespace Game {
 		[SerializeField] private GameObject startMenu = null;
 		[SerializeField] private GameObject loadingMenu = null;
 		[SerializeField] private GameObject pauseMenu = null;
+		[SerializeField] private GameObject endOfSimulationMenu = null;
 		[Space]
 		[SerializeField] private GameObject standartGameInterfase = null;
 		[SerializeField] private GameObject scoreLable = null;
@@ -31,20 +32,17 @@ namespace Game {
 		private void Start () {
 			SetCameraComponentState(gameCamera, enabled: true);
 
+			TurnOffAllMenues();
+
 			menuCanvas?.SetActive(true);
 			startMenu?.SetActive(true);
-
-			loadingMenu?.SetActive(false);
-			standartGameInterfase?.SetActive(false);
-			pauseMenu?.SetActive(false);
 		}
 
 		public void PlayButtonClickedHandler () {
+			TurnOffAllMenues();
+
 			menuCanvas?.SetActive(true);
-
-			startMenu?.SetActive(false);
 			loadingMenu?.SetActive(true);
-
 
 			var dispatcher = GetComponent<CoroutineBasedDispathcer>();
 
@@ -58,12 +56,11 @@ namespace Game {
 		private void SimulationInitializedHandler (SimulatorAdapter simulation) {
 			InitializeSimulation(simulation);
 
-			startMenu?.SetActive(false);
-			loadingMenu?.SetActive(false);
+			TurnOffAllMenues();
+			menuCanvas?.SetActive(true);
 			standartGameInterfase?.SetActive(true);
 
 			currentSimulation = simulation;
-
 			scoreUpdateCoroutine = StartCoroutine(ScoreUpdateCoroutine());
 		}
 
@@ -90,8 +87,9 @@ namespace Game {
 			simulation.Visualizer = visualizer;
 
 			var observingCamera = gameCamera.GetComponent<Visualization.IVisualizerObserver>();
-			observingCamera.Restart();
 			Debug.Assert(observingCamera != null, "GameCamera must have IVisualizerObserver based component.");
+
+			observingCamera.Restart();
 			simulation.ObservingCamera = observingCamera;
 
 			var validPlayer = SelectValidPlayer();
@@ -102,7 +100,20 @@ namespace Game {
 			simulation.ObservedPlayer = validPlayer;
 			AddBots(simulation);
 
+			simulation.ObservedPlayerDied -= ObservedPlayerDiedHandler;
+			simulation.ObservedPlayerDied += ObservedPlayerDiedHandler;
+
 			simulation.MakeStep();
+		}
+
+		private void ObservedPlayerDiedHandler (object sender, SimulatorAdapter.ObservedPlayerDiedEventArgs args) {
+			isPause = true;
+
+			TurnOffAllMenues();
+
+			menuCanvas?.SetActive(true);
+			standartGameInterfase?.SetActive(true);
+			endOfSimulationMenu?.SetActive(true);
 		}
 
 		public void GameExitButtonPressed () {
@@ -126,14 +137,25 @@ namespace Game {
 				currentSimulation = null;
 			}
 
+			TurnOffAllMenues();
+
 			menuCanvas?.SetActive(true);
 			startMenu?.SetActive(true);
+		}
 
+		public void PlayAgainButtonPressed () {
+			TurnOffAllMenues();
+
+			SimulationExitButtonPressed();
+			PlayButtonClickedHandler();
+		}
+
+		public void TurnOffAllMenues () {
+			startMenu?.SetActive(false);
 			loadingMenu?.SetActive(false);
-			standartGameInterfase?.SetActive(false);
 			pauseMenu?.SetActive(false);
-
-
+			endOfSimulationMenu?.SetActive(false);
+			standartGameInterfase?.SetActive(false);
 		}
 
 		public void PauseExitButtonPressed () {
@@ -142,8 +164,18 @@ namespace Game {
 		}
 
 		public void PauseButtonPressedHandler () {
-			isPause = true;
-			pauseMenu?.SetActive(true);
+			if (endOfSimulationMenu != null && endOfSimulationMenu.activeSelf) return;
+
+			if (isPause) {
+				PauseExitButtonPressed();
+			} else {
+				isPause = true;
+
+				TurnOffAllMenues();
+				menuCanvas?.SetActive(true);
+				pauseMenu?.SetActive(true);
+			}
+			
 		}
 
 		private void DirectionSelectedHandler (object sender, System.EventArgs eventArgs) {

@@ -14,6 +14,11 @@ namespace Simulator {
 		}
 
 		public bool TryGetScore (IPlayer player, out float score) {
+			if (player == null) {
+				score = -1;
+				return false;
+			}
+
 			if (playerScore.TryGetValue(player, out var scoreInfo)) {
 				score = scoreInfo.score;
 				return true;
@@ -37,6 +42,11 @@ namespace Simulator {
 		}
 
 		public bool TryGetCurrentMultiplier (IPlayer player, out float multiplier) {
+			if (player == null) {
+				multiplier = -1;
+				return false;
+			}
+
 			if (playerScore.TryGetValue(player, out var scoreInfo)) {
 				float timeDelta = Time.time - scoreInfo.lastUpdate;
 				multiplier = CalcCurrentMultiplier(scoreInfo.multiplier, timeDelta);

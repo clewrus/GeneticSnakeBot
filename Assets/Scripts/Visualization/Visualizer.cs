@@ -96,6 +96,10 @@ namespace Visualization {
 				} break;
 
 				case FieldItem.ItemType.Food: {
+					if (positionToPlacementId.TryGetValue(pos, out int prevId) && prevId != tarItem.id) {
+						RemoveFromPlacement(pos);
+					}
+
 					RedrawFoodEntity(simulation, tarItem, pos);
 				} break;
 
@@ -104,6 +108,10 @@ namespace Visualization {
 				} break;
 
 				case FieldItem.ItemType.Snake: {
+					if (positionToPlacementId.TryGetValue(pos, out int prevId) && prevId != tarItem.id) {
+							RemoveFromPlacement(pos);
+					}
+
 					if ((byte)(tarItem.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
 						RedrawSnakeEntity(simulation, tarItem, pos);
 					}

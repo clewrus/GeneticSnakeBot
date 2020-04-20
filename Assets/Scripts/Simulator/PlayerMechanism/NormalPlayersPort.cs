@@ -75,6 +75,8 @@ namespace Simulator {
 
 		public List<MoveInfo> MakeMove (FieldProjector projector) {
 			var moveInfos = new List<MoveInfo>(idToPlayer.Count);
+			object lockForMoveInfos = new object();
+
 			var numOfTasks = availableCores.Value;
 			var moveTasks = new Task[numOfTasks];
 
@@ -92,7 +94,9 @@ namespace Simulator {
 						(int id, IPlayer player) = orderedIdPlayer[i];
 
 						var move = EvaluatePlayerMove(projector, id, player);
-						moveInfos.Add(move);
+						lock (lockForMoveInfos) {
+							moveInfos.Add(move);
+						}
 					}
 				});
 			}

@@ -18,6 +18,7 @@ namespace Game {
 
 		#region Properties
 
+		public EventHandler<ObservedPlayerDiedEventArgs> ObservedPlayerDied { get; set; }
 		public Visualizable.IVisualizable Simulation { get => m_Simulation; }
 		public Simulator.IScorer Scorer { get => m_Scorer; }
 
@@ -84,6 +85,18 @@ namespace Game {
 			return false;
 		}
 
+		private void ObservationFinishedHandler (object sender, EventArgs args) {
+			OnObservedPlayerDied();
+		}
+
+		private void OnObservedPlayerDied () {
+			var hasInfo = TryGetObservedPlayerScoreInfo(out var info);
+			ObservedPlayerDied?.Invoke(this, new ObservedPlayerDiedEventArgs() {
+				player = m_ObservedPlayer,
+				score = (hasInfo) ? (float?)info.score : null,
+			});
+		}
+
 		#region Properties update methods
 
 		private void ChangeVisualizer (Visualization.Visualizer old, Visualization.Visualizer nw) {
@@ -130,10 +143,13 @@ namespace Game {
 
 		private void ChangeObservingCamera (Visualization.IVisualizerObserver old, Visualization.IVisualizerObserver nw) {
 			if (old != null && m_Visualizer != null) {
+				old.ObservationFinished -= ObservationFinishedHandler;
 				m_Visualizer.RemoveObserver(old);
 			}
 
 			if (nw == null) return;
+			nw.ObservationFinished -= ObservationFinishedHandler;
+			nw.ObservationFinished += ObservationFinishedHandler;
 
 			if (m_ObservedPlayer != null && TryFindPlayerId(m_ObservedPlayer, out int id)) {
 				nw.ExpectedPlacementId = id;
@@ -145,5 +161,10 @@ namespace Game {
 		}
 
 		#endregion
+
+		public class ObservedPlayerDiedEventArgs : EventArgs {
+			public Simulator.IPlayer player;
+			public float? score;
+		}
 	}
 }
