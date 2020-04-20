@@ -33,22 +33,28 @@ namespace Simulator {
 		public int Height => height;
 		public FieldItem[,] Field => field;
 
-#region Constants
+		#region Constants
+
 		private readonly int SPAWN_BORDER = 1;
 
 		private readonly float SPAWNED_FOOD_VALUE = 1;
 		private readonly float FOOD_SPAWN_RATE = 0.05f;
 		private readonly float HALF_FOOD_FRAME = 30;
-#endregion
 
-#region Buffers
+		#endregion
+
+		#region Buffers
+
 		private List<MoveInfo> curMovesListBuffer = new List<MoveInfo>();
 		private Dictionary<int, MoveInfo> curMovesDictBuffer = new Dictionary<int, MoveInfo>();
 
 		private HashSet<(int x, int y)> updatedPositions = new HashSet<(int x, int y)>();
 		private HashSet<int> removedEntities = new HashSet<int>();
 		private Dictionary<int, float> eatenValue = new Dictionary<int, float>();
-#endregion
+
+		#endregion
+
+		#region Public
 
 		public Simulation (int width, int height, int fieldGenerationSeed) {
 			this.fieldGenerator = new FieldGenerator(fieldGenerationSeed, width, height, GetNextId);
@@ -110,6 +116,10 @@ namespace Simulator {
 			UpdateObservers();
 		}
 
+		#endregion
+
+		#region Ports managment
+
 		private void LoadMovesToDictBuffer () {
 			curMovesListBuffer.Clear();
 			foreach (var port in playersPorts) {
@@ -151,6 +161,8 @@ namespace Simulator {
 			}
 		}
 
+		#endregion
+
 		private void UpdateObservers () {
 			if (observers.Count == 0) return;
 			
@@ -172,7 +184,7 @@ namespace Simulator {
 			ScatterFood();
 		}
 
-#region Food scattering
+		#region Food scattering
 
 		private void ScatterFood () {
 			int nwPiecesAmount = FoodPiecesAmount(rand, curFrame, new Vector2Int(width, height));
@@ -204,19 +216,19 @@ namespace Simulator {
 			return (int)(piecesPerCell * fieldSize.x * fieldSize.y);
 		}
 
-#endregion
+		#endregion
 
-#region Snake position update
+		#region Snake position update
 
 		private void UpdateSnake (int id, MoveInfo moveInfo) {
-			Vector2Int oldHeadPos;
-			bool isNewSnake = false;
-
 			if (deadSnakes.Contains(id)) return;
-			if (!idToFieldPos.TryGetValue(id, out oldHeadPos)) {
+
+			if (!idToFieldPos.TryGetValue(id, out Vector2Int oldHeadPos)) {
 				oldHeadPos = AddNewSnake(id);
 				idToPort.Add(id, FindSnakePort(id));
-				isNewSnake = true;
+
+				UpdateTail(oldHeadPos, false);
+				return;
 			}
 
 			var oldHeadItem = field[oldHeadPos.x, oldHeadPos.y];
@@ -233,13 +245,13 @@ namespace Simulator {
 			var p = newHeadPos;
 			bool wallHitted = p.x<0 || p.y<0 || width<=p.x || height<=p.y;
 			
-			FieldItem hittedItem = default(FieldItem);
+			var hittedItem = default(FieldItem);
 			if (!wallHitted) {
 				hittedItem = field[newHeadPos.x, newHeadPos.y];
 				wallHitted = wallHitted || (hittedItem.type == FieldItem.ItemType.Wall);
 			}           
 
-			if (isNewSnake || skipMove || wallHitted) {
+			if (skipMove || wallHitted) {
 				UpdateTail(oldHeadPos, false);
 				return;
 			}
@@ -247,24 +259,29 @@ namespace Simulator {
 			int prevHeadPos = oldHeadPos.y * width + oldHeadPos.x;
 			var newHeadItem = SampleNewHeadItem(oldHeadItem, prevHeadPos, selectedDir);
 
-			MoveHead(oldHeadPos, newHeadPos, hittedItem, newHeadItem);
-			idToFieldPos[id] = newHeadPos;
+			MoveHead(oldHeadPos, newHeadPos, hittedItem, newHeadItem, out bool isAlive);
+			if (isAlive) idToFieldPos[id] = newHeadPos;
 		}
 
-		private void MoveHead (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
+		private void MoveHead (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem, out bool isAlive) {
 			bool bitedItsTail = (hitted.id == nwItem.id && hitted.prevNeighborPos == -1);
 
 			if (hitted.type == FieldItem.ItemType.None || bitedItsTail) {
 				unchecked { field[oldPos.x, oldPos.y].flags &= (byte)(~(uint)(FieldItem.Flag.Head)); }
+				isAlive = true;
 				UpdateTail(oldPos, true);
 				UpdateFieldItem(nwPos.x, nwPos.y, nwItem);
 
 			} else if (hitted.type == FieldItem.ItemType.Food) {
+				isAlive = true;
 				HandleMoveOnFood(oldPos, nwPos, hitted, nwItem);
 
 			} else if (hitted.type == FieldItem.ItemType.Snake) {
-				HandleMoveOnSnake(oldPos, nwPos, nwItem);
-			}  
+				HandleMoveOnSnake(oldPos, nwPos, nwItem, out isAlive);
+
+			} else {
+				throw new System.Exception("Unexpected field item");
+			}
 		}
 
 		private void HandleMoveOnFood (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
@@ -291,30 +308,33 @@ namespace Simulator {
 			UpdateFieldItem(nwPos.x, nwPos.y, nwItem);
 		}
 
-		private void HandleMoveOnSnake (Vector2Int oldPos, Vector2Int nwPos, FieldItem nwItem) {
+		private void HandleMoveOnSnake (Vector2Int oldPos, Vector2Int nwPos, FieldItem nwItem, out bool isAlive) {
 			UpdateTail(oldPos, false);
 			uint initFlag = field[oldPos.x, oldPos.y].flags;
 			var hitted = field[nwPos.x, nwPos.y];
 
 			if (hitted.frameOfLastUpdate < curFrame && curMovesDictBuffer.TryGetValue(hitted.id, out var hittedMoveInfo)) {
-
 				UpdateSnake(hitted.id, hittedMoveInfo);
 				hitted = field[nwPos.x, nwPos.y];
 
-				if (removedEntities.Contains(nwItem.id)) return;
+				if (removedEntities.Contains(nwItem.id)) {
+					isAlive = false;
+					return;
+				}
 			}
 
 			if (hitted.type == FieldItem.ItemType.Snake) {
 				if ((hitted.flags & (byte)FieldItem.Flag.Head) == (byte)FieldItem.Flag.Head) {
 					RemoveSnake(oldPos, nwItem.id);
 					RemoveSnake(nwPos, hitted.id);
+					isAlive = false;
 					return;
 				}
 
 				var hittedHeadPos = idToFieldPos[hitted.id];
 				var hittedHead = field[hittedHeadPos.x, hittedHeadPos.y];
 
-				if (hittedHead.prevNeighborPos == width*nwPos.y + nwPos.x) {
+				if (hittedHead.prevNeighborPos == width * nwPos.y + nwPos.x) {
 					RemoveSnake(hittedHeadPos, hitted.id);
 				} else {
 					BiteOffSnake(nwPos, hitted);
@@ -329,11 +349,12 @@ namespace Simulator {
 			nwItem.flags |= (byte)additionalFlags;
 
 			unchecked { field[oldPos.x, oldPos.y].flags = (byte)(initFlag & (~(uint)(FieldItem.Flag.Head))); }
-			MoveHead(oldPos, nwPos, hitted, nwItem);
+			MoveHead(oldPos, nwPos, hitted, nwItem, out isAlive);
 		}
 
 		private void RemoveSnake (Vector2Int headPos, int id) {
-			RemoveEntityTail(headPos);
+			ScatterSnakeTail(headPos, id);
+
 			deadSnakes.Add(id);
 			removedEntities.Add(id);
 			idToFieldPos.Remove(id);
@@ -357,19 +378,20 @@ namespace Simulator {
 			}
 			field[curPos.x, curPos.y].prevNeighborPos = -1;
 
-			var clearedPos = new List<Vector2Int>(16);
-			RemoveEntityTail(startPos, (pos) => clearedPos.Add(pos));
-
-			ScatterSnakeTail(hitted, clearedPos);			
+			ScatterSnakeTail(startPos, hitted.id);			
 		}
 
-		private void ScatterSnakeTail (FieldItem hitted, List<Vector2Int> foodPos) {
-			var foodVal = idToValue[hitted.id] / idToCurLength[hitted.id];
-			idToCurLength[hitted.id] -= foodPos.Count;
+		private void ScatterSnakeTail (Vector2Int startPos, int targetId) {
+			var foodPos = new List<Vector2Int>(16);
+			RemoveEntityTail(startPos, (pos) => foodPos.Add(pos));
+
+			var foodVal = 0.8f * idToValue[targetId] / idToCurLength[targetId];
+			idToCurLength[targetId] -= foodPos.Count;
 
 			var totalValueDelta = foodPos.Count * foodVal;
-			idToValue[hitted.id] -= totalValueDelta;
+			idToValue[targetId] -= totalValueDelta;
 
+			var pieceValue = (foodVal < SPAWNED_FOOD_VALUE) ? SPAWNED_FOOD_VALUE : foodVal;
 			foreach (var nwPos in foodPos) {
 				var nwId = GetNextId();
 				idToFieldPos.Add(nwId, nwPos);
@@ -379,7 +401,7 @@ namespace Simulator {
 					frameOfLastUpdate = curFrame,
 					prevNeighborPos = -1,
 
-					value = foodVal * 0.8f,
+					value = pieceValue,
 					type = FieldItem.ItemType.Food
 				});
 			}
@@ -492,7 +514,7 @@ namespace Simulator {
 			}
 		}
 
-#endregion
+		#endregion
 
 #region Snake creation
 
