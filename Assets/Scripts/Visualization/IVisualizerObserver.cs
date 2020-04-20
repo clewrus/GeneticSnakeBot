@@ -13,5 +13,6 @@ namespace Visualization {
 
 		Vector2Int FieldSize { set; }
 		int ExpectedPlacementId { get; set; }
+		EventHandler ObservationFinished { get; set; }
 	}
 }

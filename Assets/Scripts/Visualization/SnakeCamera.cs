@@ -9,6 +9,7 @@ namespace Visualization {
 		public Vector2Int FieldSize { set; private get; }
 
 		public int ExpectedPlacementId { get; set; }
+		public System.EventHandler ObservationFinished { get; set; }
 
 		private float? timeOfLastUpdate;
 		private float? previousMoveDuration;
@@ -33,46 +34,52 @@ namespace Visualization {
 		}
 
 		public void PlacementChangedHandler (IEnumerable<Vector2Int> placement, bool exists, bool wasRemovedRecently) {
-			if (!exists) return;
-
-			Vector3 nwPos = CalcNewCameraPos(placement);
-			nwPos.z = transform.localPosition.z;
-
-			float predictedMoveDuration = 0;
-
-			if (!timeOfLastUpdate.HasValue) {
-				transform.localPosition = nwPos;
-			} else if (!previousMoveDuration.HasValue) {
-				previousMoveDuration = Time.time - timeOfLastUpdate;
-				predictedMoveDuration = previousMoveDuration.Value;
-			} else {
-				var curMoveDuration = Time.time - timeOfLastUpdate;
-				predictedMoveDuration = PredictMoveDuration(previousMoveDuration.Value, curMoveDuration.Value);
-				previousMoveDuration = curMoveDuration;
-			}
+			if (wasRemovedRecently) OnObservationFinished();
 
 			if (cameraMovingCoroutine != null) {
 				StopCoroutine(cameraMovingCoroutine);
+				cameraMovingCoroutine = null;
 			}
 
-			var curPos = transform.localPosition;
+			if (!exists) return;
+
+			Vector3 curPos = transform.localPosition;
+			Vector3 nwPos = CalcNewCameraPos(placement);
+			nwPos.z = transform.localPosition.z;
+
+			previousMoveDuration = (previousMoveDuration.HasValue) ? (float?)Mathf.Min(1, previousMoveDuration.Value) : null;
+			float predictedMoveDuration = PredictMoveDuration(out previousMoveDuration);
 			cameraMovingCoroutine = StartCoroutine(CameraMove(curPos, nwPos, predictedMoveDuration));
+
 			timeOfLastUpdate = Time.time;
 		}
 
 		private IEnumerator CameraMove (Vector3 oldPos, Vector3 nwPos, float timeToMove) {
-			float t = Time.deltaTime / timeToMove;
-			while (t < 1) {
-				var curPos = Vector3.Lerp(oldPos, nwPos, Mathf.Pow(t, moveFluidity));
-				transform.localPosition = curPos;
-				t += Time.deltaTime / timeToMove;
-				yield return null;
+			if (timeToMove > 0) {
+				float t = Time.deltaTime / timeToMove;
+				while (t < 1) {
+					var curPos = Vector3.Lerp(oldPos, nwPos, Mathf.Pow(t, moveFluidity));
+					transform.localPosition = curPos;
+					t += Time.deltaTime / timeToMove;
+					yield return null;
+				}
 			}
+
 			transform.localPosition = nwPos;
 		}
 
-		private float PredictMoveDuration (float prevDur, float curDur) {
-			return Mathf.Lerp(curDur, prevDur, prevMoveDurInfluence);
+		private float PredictMoveDuration (out float? prevMoveDuration) {
+			if (!timeOfLastUpdate.HasValue) {
+				prevMoveDuration = null;
+				return 0;
+			} else if (!previousMoveDuration.HasValue) {
+				prevMoveDuration = Time.time - timeOfLastUpdate;
+				return previousMoveDuration.Value;
+			} else {
+				var curMoveDuration = Time.time - timeOfLastUpdate;
+				prevMoveDuration = curMoveDuration;
+				return Mathf.Lerp(curMoveDuration.Value, previousMoveDuration.Value, prevMoveDurInfluence);
+			}
 		}
 
 		private Vector2 CalcNewCameraPos (IEnumerable<Vector2Int> placement) {
@@ -91,6 +98,10 @@ namespace Visualization {
 			averagePos /= totalMass;
 			var nwCameraPos = averagePos + 0.5f * (FieldSize.x * Vector2.left + FieldSize.y * Vector2.down + 3*Vector2.one);
 			return nwCameraPos;
+		}
+
+		private void OnObservationFinished () {
+			ObservationFinished?.Invoke(this, new System.EventArgs());
 		}
 
 		private void OnPreRender () {

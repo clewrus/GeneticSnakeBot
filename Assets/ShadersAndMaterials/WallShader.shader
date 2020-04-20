@@ -93,11 +93,12 @@
 					} break;
 				}
 
-				uv += float2(uv.x <= 0, uv.y <= 0);
+				uv += float2(uv.x < 0.1, uv.y < -0.1);
 				float2 uvP = float2(C*((uv.x-1) + uv.y), C*(-(uv.x-1) + uv.y));
 
 				float offset = _OffsetWidth;
 				uint type = (locOr >> 2) & 3;
+
 				switch (type) {
 					case 0: { } break;
 
@@ -161,6 +162,7 @@
 				cellColor *= max(type == 3, pow(clamp((1 - Y / R), 0, 1), _EdgeShade));
 
 				cellColor *= _Color.a * pow(noise.y, _BorderWidth);
+
 				return mask * fixed4(cellColor, 1);
 			}
 			ENDCG
