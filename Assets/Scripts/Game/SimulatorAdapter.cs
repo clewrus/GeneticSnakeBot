@@ -49,9 +49,9 @@ namespace Game {
 		#endregion
 
 		public SimulatorAdapter (int width, int height, int seed) {
-			this.m_Simulation = new Simulator.Simulation(width, height, seed);
+			this.m_Simulation = new Simulator.Simulation(width, height, seed) { FOOD_SPAWN_RATE = 0 };
 			this.m_Scorer = new Simulator.SinglePlayerScorer();
-			this.localPort = new Simulator.NormalPlayersPort();
+			this.localPort = new Simulator.NormalPlayersPort() { ValuePerMove = 0f };
 
 			localPort.Scorer = m_Scorer;
 			m_Simulation.AddPlayerPort(localPort);

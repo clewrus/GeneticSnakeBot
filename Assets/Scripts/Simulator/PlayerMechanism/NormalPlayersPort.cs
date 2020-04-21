@@ -9,6 +9,8 @@ namespace Simulator {
 
 		public IScorer Scorer { get; set; }
 
+		public float ValuePerMove { get; set; } = 0.1f;
+
 		private Dictionary<int, IPlayer> idToPlayer;
 		private Dictionary<IPlayer, int> playerToId;
 		private List<(int id, IPlayer player)> orderedIdPlayer;
@@ -126,7 +128,7 @@ namespace Simulator {
 
 			var move = player.MakeMove(headInfo.headDir, proj);
 			move.id = id;
-			move.valueUsed = 0.1f;
+			move.valueUsed = ValuePerMove;
 
 			return move;
 		}

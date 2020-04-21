@@ -33,13 +33,13 @@ namespace Simulator {
 		public int Height => height;
 		public FieldItem[,] Field => field;
 
-		#region Constants
+		#region Options
 
-		private readonly int SPAWN_BORDER = 1;
+		public int SPAWN_BORDER { get; set; } = 1;
 
-		private readonly float SPAWNED_FOOD_VALUE = 1;
-		private readonly float FOOD_SPAWN_RATE = 0.05f;
-		private readonly float HALF_FOOD_FRAME = 30;
+		public float SPAWNED_FOOD_VALUE { get; set; } = 1;
+		public float FOOD_SPAWN_RATE { get; set; } = 0.05f;
+		public float HALF_FOOD_FRAME { get; set; } = 30;
 
 		#endregion
 

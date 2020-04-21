@@ -15,6 +15,7 @@ namespace Game {
 		[SerializeField] private GameObject endOfSimulationMenu = null;
 		[Space]
 		[SerializeField] private GameObject standartGameInterfase = null;
+		[SerializeField] private GameObject arenaGameInterfase = null;
 		[SerializeField] private GameObject scoreLable = null;
 		[Space]
 		[SerializeField] private Visualization.Visualizer visualizer = null;
@@ -23,9 +24,11 @@ namespace Game {
 		[SerializeField] private int width = 10;
 		[SerializeField] private int height = 10;
 		[SerializeField] private int numberOfBots = 1;
+		[SerializeField] private float GameDuration = 60;
 
 		private SimulatorAdapter currentSimulation;
 		private Coroutine scoreUpdateCoroutine;
+		private Coroutine countdownCoroutine;
 
 		private bool isPause;
 
@@ -59,28 +62,69 @@ namespace Game {
 			TurnOffAllMenues();
 			menuCanvas?.SetActive(true);
 			standartGameInterfase?.SetActive(true);
+			arenaGameInterfase?.SetActive(true);
 
 			currentSimulation = simulation;
 			scoreUpdateCoroutine = StartCoroutine(ScoreUpdateCoroutine());
+			countdownCoroutine = StartCoroutine(CountdownCoroutine());
 		}
 
 		private IEnumerator ScoreUpdateCoroutine () {
-			if (scoreLable == null) yield break;
-
+			ArenaInterfaceManager arenaManager = null;
 			ScoreUpdater scoreUpdater = null;
-			while (true) {
-				if (scoreUpdater == null) {
-					scoreUpdater = scoreLable.GetComponent<ScoreUpdater>();
-				}
 
-				if (scoreUpdater != null && currentSimulation != null &&
-					currentSimulation.TryGetObservedPlayerScoreInfo(out var scoreInfo))
-				{
-					scoreUpdater.Value = (int)scoreInfo.score;
+			while (true) {
+				if (currentSimulation != null && currentSimulation.TryGetObservedPlayerScoreInfo(out var scoreInfo)) {
+					if (scoreLable != null) {
+						if (scoreUpdater == null) {
+							scoreUpdater = scoreLable.GetComponent<ScoreUpdater>();
+						}
+						if (scoreUpdater != null) {
+							scoreUpdater.Value = (int)scoreInfo.score;
+						}
+					}
+
+					if (arenaGameInterfase != null) {
+						if (arenaManager == null) {
+							arenaManager = arenaGameInterfase.GetComponent<ArenaInterfaceManager>();
+						}
+						if (arenaManager != null) {
+							arenaManager.CurMultiplier = (scoreInfo.multiplier.HasValue) ? scoreInfo.multiplier.Value : 1;
+						}
+					}
 				}
 
 				yield return null;
 			}
+		}
+
+		private IEnumerator CountdownCoroutine () {
+			ArenaInterfaceManager arenaManager = null;
+			float leftTime = GameDuration;
+
+			while (leftTime > 0) {
+				if (!isPause) {
+					leftTime -= Time.deltaTime;
+				}
+
+				if (arenaGameInterfase != null) {
+					if (arenaManager == null) {
+						arenaManager = arenaGameInterfase.GetComponent<ArenaInterfaceManager>();
+						if (arenaManager != null) arenaManager.MaxTime = GameDuration;
+					}
+					if (arenaManager != null) {
+						arenaManager.CurTime = Mathf.Max(0, leftTime);
+					}
+				}
+				
+				yield return null;
+			}
+
+			OnCountdownEnded();
+		}
+
+		private void OnCountdownEnded () {
+			TurnOnEndOfGameMenu();
 		}
 
 		private void InitializeSimulation (SimulatorAdapter simulation) {
@@ -107,12 +151,22 @@ namespace Game {
 		}
 
 		private void ObservedPlayerDiedHandler (object sender, SimulatorAdapter.ObservedPlayerDiedEventArgs args) {
+			TurnOnEndOfGameMenu();
+		}
+
+		private void TurnOnEndOfGameMenu () {
 			isPause = true;
+
+			if (countdownCoroutine != null) {
+				StopCoroutine(countdownCoroutine);
+				countdownCoroutine = null;
+			}
 
 			TurnOffAllMenues();
 
 			menuCanvas?.SetActive(true);
 			standartGameInterfase?.SetActive(true);
+			arenaGameInterfase?.SetActive(true);
 			endOfSimulationMenu?.SetActive(true);
 		}
 
@@ -156,6 +210,7 @@ namespace Game {
 			pauseMenu?.SetActive(false);
 			endOfSimulationMenu?.SetActive(false);
 			standartGameInterfase?.SetActive(false);
+			arenaGameInterfase?.SetActive(false);
 		}
 
 		public void PauseExitButtonPressed () {
@@ -173,6 +228,8 @@ namespace Game {
 
 				TurnOffAllMenues();
 				menuCanvas?.SetActive(true);
+				standartGameInterfase?.SetActive(true);
+				arenaGameInterfase?.SetActive(true);
 				pauseMenu?.SetActive(true);
 			}
 			
