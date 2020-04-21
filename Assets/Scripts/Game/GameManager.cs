@@ -162,9 +162,6 @@ namespace Game {
 				countdownCoroutine = null;
 			}
 
-			currentSimulation.ObservedPlayerDied -= ObservedPlayerDiedHandler;
-			currentSimulation.ObservingCamera?.PlacementChangedHandler(null, false, true);
-
 			TurnOffAllMenues();
 
 			menuCanvas?.SetActive(true);

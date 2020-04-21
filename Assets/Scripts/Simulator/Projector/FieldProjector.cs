@@ -41,6 +41,10 @@ namespace Simulator {
 			}
 		}
 
+		public int FindItemsInCircle (int x, int y, float R, List<(int x, int y)> result) {
+			return fieldTree.FindItemsInCircle(x, y, R, result);
+		}
+
 		public Projection CalcSnakeView (
 			(int x, int y) pos,
 			MoveInfo.Direction dir,

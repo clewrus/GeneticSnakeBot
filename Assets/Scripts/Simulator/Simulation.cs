@@ -516,7 +516,7 @@ namespace Simulator {
 
 		#endregion
 
-#region Snake creation
+		#region Snake creation
 
 		private Vector2Int AddNewSnake (int id) {
 			SnakeInfo info = FindSnakePort(id).GetSnakeInfo(id);
@@ -531,75 +531,157 @@ namespace Simulator {
 			return pos;
 		}
 
-		private Vector2Int AddNewSnakeToField (int snakeId, int targetLength) {
-			var alteredCells = new HashSet<int>();
+		private Vector2Int AddNewSnakeToField (int id, int targetLength) {
+			var boxDimentions = EvaluateSpawnBoxDimentions(targetLength);
 
+			var toMinCorner = new Vector2Int(-(boxDimentions.x - 1) / 2, -(boxDimentions.y - 1) / 2);
+			var diagOffset = boxDimentions - Vector2Int.one;
+
+			int count = 0;
+			var projResult = new List<(int x, int y)>(128);
 			while (true) {
-				int prevPos = -1;
+				++count;
+				var testPosition = new Vector2Int(rand.Next(diagOffset.x, width - diagOffset.x), rand.Next(diagOffset.y, width - diagOffset.y));
 
-				bool vertPlacement = Random.value > 0.5f;
-				bool invertedPlacement = Random.value > 0.5f;
-				MoveInfo.Direction dir = ChooseDirection(vertPlacement, invertedPlacement);
-
-				int curX, curY;
-				if (invertedPlacement) {
-					curX = Random.Range(((vertPlacement)? 0: targetLength)+SPAWN_BORDER, width-SPAWN_BORDER);
-					curY = Random.Range(((vertPlacement)? targetLength: 0)+SPAWN_BORDER, height-SPAWN_BORDER);
-				} else {
-					curX = Random.Range(SPAWN_BORDER, width-SPAWN_BORDER-((vertPlacement)? 0: targetLength));
-					curY = Random.Range(SPAWN_BORDER, height-SPAWN_BORDER-((vertPlacement)? targetLength: 0));
-				}
-				
-				int curLength = 0;
-				alteredCells.Clear();
-				while (curLength < targetLength) {
-					if (width <= curX || height <= curY || curX < 0 || curY < 0) break;
-					if (field[curX, curY].type != FieldItem.ItemType.None) break;
-					int curPos = curY*width + curX;
-
-					alteredCells.Add(curPos);
-					UpdateFieldItem(curX, curY, new FieldItem() {
-						id = snakeId,
-						frameOfLastUpdate = curFrame - 1,
-						prevNeighborPos = prevPos,
-						flags = (curLength==targetLength-1)? (byte)FieldItem.Flag.Head: (byte)0,
-						type = FieldItem.ItemType.Snake,
-						dir = dir
-					});
-
-					++curLength;
-					if (curLength == targetLength) break;
-
-					prevPos = curPos;
-					curX = (vertPlacement)? curX : (curX + ((invertedPlacement)? -1: 1));
-					curY = (vertPlacement)? (curY + ((invertedPlacement)? -1: 1)) : curY;                    
+				bool isValidPosition = true;
+				for (int i = 0; isValidPosition && i < boxDimentions.x * boxDimentions.y; i++) {
+					var curPos = testPosition + toMinCorner + new Vector2Int(i % boxDimentions.x, i / boxDimentions.x);
+					var curItemType = field[curPos.x, curPos.y].type;
+					isValidPosition = isValidPosition && (curItemType == FieldItem.ItemType.Food || curItemType == FieldItem.ItemType.None);
 				}
 
-				if (curLength == targetLength) {
-					return new Vector2Int(curX, curY);
-				} else {
-					foreach (var cellPos in alteredCells) {
-						UpdateFieldItem(cellPos%width, cellPos/width, default);
+				if (!isValidPosition) continue;
+				projResult.Clear();
+
+				int R = Mathf.Max(boxDimentions.x, boxDimentions.y);
+				fieldProjector.FindItemsInCircle(testPosition.x, testPosition.y, 2 * R, projResult);
+
+				foreach ((int x, int y) in projResult) {
+					if (x < 0 || y < 0 || x >= width || y >= width) continue;
+					var closeItemType = field[x, y].type;
+					isValidPosition = isValidPosition && (closeItemType != FieldItem.ItemType.Snake);
+					if (!isValidPosition) break;
+				}
+
+				if (isValidPosition || count > 100) {
+					var headPos = SpawnSnakeInBox(testPosition + toMinCorner, testPosition + toMinCorner + diagOffset, id, targetLength);
+					fieldProjector.UpdateAtPositions(IterateThroughBox(testPosition + toMinCorner, boxDimentions));
+					return headPos;
+				}
+			}
+		}
+
+		private Vector2Int EvaluateSpawnBoxDimentions (int targetLength) {
+			int spawnAreaA = Mathf.CeilToInt(Mathf.Sqrt(targetLength));
+			int spawnAreaB = Mathf.CeilToInt((float)targetLength / spawnAreaA);
+
+			if (rand.NextDouble() < 0.5) {
+				return new Vector2Int(spawnAreaA, spawnAreaB);
+			} else {
+				return new Vector2Int(spawnAreaB, spawnAreaA);
+			}
+		}
+
+		private Vector2Int SpawnSnakeInBox (Vector2Int minCorner, Vector2Int maxCorner, int id, int length) {
+			int rollInfo = rand.Next(0, 8);
+			int curFace = ((rollInfo + 1) / 2) % 4;
+			bool isClockWise = (rollInfo % 2 == 1);
+
+			Vector2Int? curPos = null;
+			var nextPos = SelectCornerAndDirection(minCorner, maxCorner, curFace, isClockWise, out Vector2Int spiralDir);
+			var headPos = nextPos;
+			for (int i = 0; i < length; i++) {
+				bool isHead = !curPos.HasValue;
+				curPos = nextPos;
+
+				if (i < length - 1) {
+					if (!BoxContains(minCorner, maxCorner, curPos.Value + spiralDir)) {
+						ShringBox(ref minCorner, ref maxCorner, curFace);
+						curFace = (curFace + ((isClockWise) ? 1 : 3)) % 4;
+						nextPos = SelectCornerAndDirection(minCorner, maxCorner, curFace, isClockWise, out spiralDir);
+					} else {
+						nextPos = curPos.Value + spiralDir;
 					}
 				}
+
+				var snakeDir = SpiralToSnakeDir(spiralDir);
+				int prevPos = (i == length - 1) ? -1 : nextPos.y * width + nextPos.x;
+				
+				var snakeItem = MakeSnakeItem(id, prevPos, isHead, snakeDir);
+				UpdateFieldItem(curPos.Value.x, curPos.Value.y, snakeItem);
+			}
+
+			return headPos;
+		}
+
+		private Vector2Int SelectCornerAndDirection (Vector2Int minC, Vector2Int maxC, int face, bool isClockWise, out Vector2Int dir) {
+			switch (face) {
+				case 0: {
+					dir = (isClockWise) ? Vector2Int.up : Vector2Int.down;
+					return (isClockWise) ? minC : new Vector2Int(minC.x, maxC.y);
+				}
+
+				case 1: {
+					dir = (isClockWise) ? Vector2Int.right : Vector2Int.left;
+					return (isClockWise) ? new Vector2Int(minC.x, maxC.y) : maxC;
+				}
+
+				case 2: {
+					dir = (isClockWise) ? Vector2Int.down : Vector2Int.up;
+					return (isClockWise) ? maxC : new Vector2Int(maxC.x, minC.y);
+				}
+
+				case 3: {
+					dir = (isClockWise) ? Vector2Int.left : Vector2Int.right;
+					return (isClockWise) ? new Vector2Int(maxC.x, minC.y) : minC;
+				}
+			}
+
+			throw new System.Exception();
+		}
+
+		private FieldItem MakeSnakeItem (int snakeId, int prevPos, bool isHead, MoveInfo.Direction dir) {
+			return new FieldItem() {
+				id = snakeId,
+				frameOfLastUpdate = curFrame - 1,
+				prevNeighborPos = prevPos,
+				flags = (isHead) ? (byte)FieldItem.Flag.Head : (byte)0,
+				type = FieldItem.ItemType.Snake,
+				dir = dir
+			};
+		}
+
+		private bool BoxContains (Vector2Int minCorner, Vector2Int maxCorner, Vector2Int pos) {
+			return minCorner.x <= pos.x && pos.x <= maxCorner.x && minCorner.y <= pos.y && pos.y <= maxCorner.y;
+		}
+
+		private void ShringBox(ref Vector2Int minCorner, ref Vector2Int maxCorner, int face) {
+			switch (face) {
+				case 0: minCorner.x += 1; break;
+				case 1: maxCorner.y -= 1; break;
+				case 2: maxCorner.x -= 1; break;
+				case 3: minCorner.y += 1; break;
+
+				default: throw new System.Exception();
 			}
 		}
 
-		private MoveInfo.Direction ChooseDirection (bool vert, bool inv) {
-			if (vert && !inv) {
-				return MoveInfo.Direction.Up;
-			} else if (vert && inv) {
-				return MoveInfo.Direction.Down;
-			} else if (!vert && !inv) {
-				return MoveInfo.Direction.Right;
-			} else if (!vert && inv) {
-				return MoveInfo.Direction.Left;
-			}
+		private MoveInfo.Direction SpiralToSnakeDir (Vector2Int spiralDir) {
+			if (spiralDir == Vector2Int.up) return MoveInfo.Direction.Down;
+			if (spiralDir == Vector2Int.left) return MoveInfo.Direction.Right;
+			if (spiralDir == Vector2Int.down) return MoveInfo.Direction.Up;
+			if (spiralDir == Vector2Int.right) return MoveInfo.Direction.Left;
 
-			return MoveInfo.Direction.None;
+			throw new System.Exception();
 		}
 
-#endregion
+		private IEnumerable<(int x, int y)> IterateThroughBox (Vector2Int minCorner, Vector2Int dimentions) {
+			for (int i = 0; i < dimentions.x * dimentions.y; i++) {
+				yield return (minCorner.x + i % dimentions.x, minCorner.y + i / dimentions.x);
+			}
+		}
+
+		#endregion
 
 		private IEnumerable<(int x, int y)> Vector2IntToTuple (IEnumerable<Vector2Int> input) {
 			foreach (var vector in input) {

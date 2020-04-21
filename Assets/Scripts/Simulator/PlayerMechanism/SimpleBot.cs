@@ -4,7 +4,7 @@ using UnityEngine;
 namespace PlayerMechanism {
 	public class SimpleBot : IPlayer {
 		SnakeInfo info = new SnakeInfo {
-				maxLength = 5,
+				maxLength = Random.Range(5, 10),
 				bodyWidth = 0.6f,
 				maxValue = 5,
 				halfViewAngle = 0.75f * 3.1416f,
