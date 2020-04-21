@@ -147,11 +147,22 @@ namespace Game {
 			simulation.ObservedPlayerDied -= ObservedPlayerDiedHandler;
 			simulation.ObservedPlayerDied += ObservedPlayerDiedHandler;
 
+			simulation.NonObservedPlayerDied -= NonObservedPlayerDiedHandler;
+			simulation.NonObservedPlayerDied += NonObservedPlayerDiedHandler;
+
 			simulation.MakeStep();
 		}
 
 		private void ObservedPlayerDiedHandler (object sender, SimulatorAdapter.ObservedPlayerDiedEventArgs args) {
 			TurnOnEndOfGameMenu();
+		}
+
+		private void NonObservedPlayerDiedHandler (object sender, Simulator.NormalPlayersPort.PlayerDiedEventArgs args) {
+			if (sender is SimulatorAdapter curAdapter) {
+				var nwBot = new PlayerMechanism.SimpleBot();
+				curAdapter.AddPlayer(nwBot);
+				Debug.Log("Added bot");
+			}
 		}
 
 		private void TurnOnEndOfGameMenu () {
@@ -184,6 +195,8 @@ namespace Game {
 				if (currentSimulation.ObservedPlayer is IHumanPlayer humanPlayer) {
 					humanPlayer.DirectionSelected -= DirectionSelectedHandler;
 				}
+
+
 
 				currentSimulation.Visualizer = null;
 				currentSimulation.ObservedPlayer = null;

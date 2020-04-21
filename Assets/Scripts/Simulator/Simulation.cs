@@ -151,7 +151,7 @@ namespace Simulator {
 					headPos = headPos,
 					headDir = headDir,
 					eatenValue = snakesNewValue,
-					flag = (byte)(((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive)
+					flag = (byte)(((deadSnakes.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive)
 							| ((snakesNewValue > 0) ? (byte)MoveResult.State.GotAFood : (byte)0)),
 				});
 			}

@@ -21,6 +21,8 @@ namespace Visualization {
 		private HashSet<IVisualizerObserver> observers;
 		private HashSet<int> recentlyRemoved;
 
+		private Dictionary<Shader, Stack<Material>> snakeTilesPool;
+
 		private void Awake () {
 			field = GetComponent<SnakeField>();
 			commonFoodMaterial = new Material(shaders.foodShader);
@@ -92,6 +94,7 @@ namespace Visualization {
 			switch (tarItem.type) {
 				case FieldItem.ItemType.None: {
 					RemoveFromPlacement(pos);
+					RemoveSnakeMaterial(field.GetTileMaterial(pos));
 					field.ClearTileMaterial(pos);
 				} break;
 
@@ -154,7 +157,12 @@ namespace Visualization {
 			if (entityPlacement.ContainsKey(item.id)) {
 				RedrawAction(simulation, item.id, pos,
 					(Vector2Int p, bool isOld) => {
+						if (!isOld) {
+							RemoveSnakeMaterial(field.GetTileMaterial(p));
+						}
+						
 						if (isOld && (simulation.Field[p.x, p.y].type == FieldItem.ItemType.None)) {
+							RemoveSnakeMaterial(field.GetTileMaterial(p));
 							field.ClearTileMaterial(p);
 						}
 					}
@@ -348,7 +356,7 @@ namespace Visualization {
 			Debug.Assert((fieldItem.flags & headMask) == headMask, "Head tile expected.");
 
 			var curDir = fieldItem.dir;
-			snakesMaterials.Push(new Material(shaders.headShader));
+			snakesMaterials.Push(GetSnakeMaterial(shaders.headShader));
 			field.SetTileMaterial(pos, snakesMaterials.Peek());
 			field.SetTileRotation(pos, DirToRot(curDir));
 
@@ -382,14 +390,18 @@ namespace Visualization {
 				int relatedDir = (curDirIndex + 4 - baseDirIndex) % 4;
 
 				switch (relatedDir) {
-					case 0: snakesMaterials.Push(new Material(shaders.bodyShader)); break;
-					case 1: snakesMaterials.Push(new Material(shaders.turnShader)); break;
+					case 0: snakesMaterials.Push(GetSnakeMaterial(shaders.bodyShader)); break;
+					case 1: {
+						var m = GetSnakeMaterial(shaders.turnShader);
+						m.SetInt("_TurnRight", 0);
+						snakesMaterials.Push(m);
+					} break;
+
 					case 3: {
-						var m = new Material(shaders.turnShader);
+						var m = GetSnakeMaterial(shaders.turnShader);
 						m.SetInt("_TurnRight", 1);
 						snakesMaterials.Push(m);
-					}
-					break;
+					} break;
 
 					default: Debug.LogError("Unexpected related direction."); break;
 				}
@@ -457,6 +469,45 @@ namespace Visualization {
 		}
 
 		#endregion
+
+		#region SnakeMaterialsPool
+
+		private void RemoveSnakeMaterial (Material mat) {
+			if (snakeTilesPool == null) {
+				snakeTilesPool = new Dictionary<Shader, Stack<Material>>();
+			}
+
+			if (mat.shader == shaders.bodyShader) {
+				if (!snakeTilesPool.TryGetValue(shaders.bodyShader, out var pool)) {
+					pool = new Stack<Material>();
+					snakeTilesPool.Add(shaders.bodyShader, pool);
+				}
+				pool.Push(mat);
+			} else if (mat.shader == shaders.headShader) {
+				if (!snakeTilesPool.TryGetValue(shaders.headShader, out var pool)) {
+					pool = new Stack<Material>();
+					snakeTilesPool.Add(shaders.headShader, pool);
+				}
+				pool.Push(mat);
+			} else if (mat.shader == shaders.turnShader) {
+				if (!snakeTilesPool.TryGetValue(shaders.turnShader, out var pool)) {
+					pool = new Stack<Material>();
+					snakeTilesPool.Add(shaders.turnShader, pool);
+				}
+				pool.Push(mat);
+			}
+		}
+
+		public Material GetSnakeMaterial (Shader tarShader) {
+			if (snakeTilesPool != null && snakeTilesPool.TryGetValue(tarShader, out var pool) && pool.Count > 0) {
+				return pool.Pop();
+			}
+
+			return new Material(tarShader);
+		}
+
+		#endregion
+
 
 	}
 
