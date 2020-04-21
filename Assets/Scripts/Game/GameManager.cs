@@ -162,6 +162,9 @@ namespace Game {
 				countdownCoroutine = null;
 			}
 
+			currentSimulation.ObservedPlayerDied -= ObservedPlayerDiedHandler;
+			currentSimulation.ObservingCamera?.PlacementChangedHandler(null, false, true);
+
 			TurnOffAllMenues();
 
 			menuCanvas?.SetActive(true);
@@ -249,7 +252,13 @@ namespace Game {
 		}
 
 		private Simulator.IPlayer SelectValidPlayer () {
-			return GetComponent<PcPlayer>();
+			Simulator.IPlayer selectedPlayer = GetComponent<PcPlayer>();
+
+			#if UNITY_ANDROID
+			selectedPlayer = GetComponent<ScreenButtonsPlayer>();
+			#endif
+
+			return selectedPlayer;
 		}
 
 		private void SetCameraComponentState (GameObject cameraObj, bool enabled) {
