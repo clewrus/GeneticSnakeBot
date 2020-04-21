@@ -20,6 +20,8 @@ namespace Simulator {
 		private Dictionary<int, IPlayersPort> idToPort;
 		private Dictionary<int, float> idToValue;
 
+		private Dictionary<int, int> foodIdToOwnerSnakeId;
+
 		private int curFrame = 0;
 
 		public readonly int width;
@@ -52,6 +54,8 @@ namespace Simulator {
 		private HashSet<int> removedEntities = new HashSet<int>();
 		private Dictionary<int, float> eatenValue = new Dictionary<int, float>();
 
+		private HashSet<int> canibalSnakes = new HashSet<int>();
+
 		#endregion
 
 		#region Public
@@ -79,6 +83,7 @@ namespace Simulator {
 			idToCurLength = new Dictionary<int, int>();
 			idToPort = new Dictionary<int, IPlayersPort>();
 			idToValue = new Dictionary<int, float>();
+			foodIdToOwnerSnakeId = new Dictionary<int, int>();
 		}
 
 		public void AddPlayerPort (IPlayersPort nwPort) {
@@ -151,8 +156,9 @@ namespace Simulator {
 					headPos = headPos,
 					headDir = headDir,
 					eatenValue = snakesNewValue,
-					flag = (byte)(((removedEntities.Contains(id_port.Key)) ? (byte)0 : (byte)MoveResult.State.IsAlive)
-							| ((snakesNewValue > 0) ? (byte)MoveResult.State.GotAFood : (byte)0)),
+					flag = (byte)(((deadSnakes.Contains(id_port.Key)) ? 0 : (byte)MoveResult.State.IsAlive)
+							| ((snakesNewValue > 0) ? (byte)MoveResult.State.GotAFood : 0)
+							| ((canibalSnakes.Contains(id_port.Key)) ? (byte)MoveResult.State.EatSelf : 0 )),
 				});
 			}
 
@@ -176,6 +182,7 @@ namespace Simulator {
 			updatedPositions.Clear();
 			removedEntities.Clear();
 			eatenValue.Clear();
+			canibalSnakes.Clear();
 
 			foreach (var id_moveInfo in curMovesDictBuffer) {
 				UpdateSnake(id_moveInfo.Key, id_moveInfo.Value);
@@ -252,6 +259,7 @@ namespace Simulator {
 			}           
 
 			if (skipMove || wallHitted) {
+				updatedPositions.Add((oldHeadPos.x, oldHeadPos.y));
 				UpdateTail(oldHeadPos, false);
 				return;
 			}
@@ -285,6 +293,11 @@ namespace Simulator {
 		}
 
 		private void HandleMoveOnFood (Vector2Int oldPos, Vector2Int nwPos, FieldItem hitted, FieldItem nwItem) {
+			if (foodIdToOwnerSnakeId.TryGetValue(hitted.id, out int ownerId) && ownerId == nwItem.id) {
+				canibalSnakes.Add(nwItem.id);
+				foodIdToOwnerSnakeId.Remove(hitted.id);
+			}
+
 			removedEntities.Add(hitted.id);
 			idToFieldPos.Remove(hitted.id);
 
@@ -395,6 +408,7 @@ namespace Simulator {
 			foreach (var nwPos in foodPos) {
 				var nwId = GetNextId();
 				idToFieldPos.Add(nwId, nwPos);
+				foodIdToOwnerSnakeId.Add(nwId, targetId);
 
 				UpdateFieldItem(nwPos.x, nwPos.y, new FieldItem{
 					id = nwId,

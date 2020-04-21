@@ -80,7 +80,7 @@ namespace Game.UI {
 
 			float normValue = (value - 1) / 3f;
 			float textH = Mathf.Lerp(H2, H1, normValue);
-			float underlayH = textH - 0.2f;
+			float underlayH = textH + 0.2f;
 
 			textH = (10 + textH) % 1;
 			underlayH = (10 + underlayH) % 1;

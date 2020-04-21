@@ -16,7 +16,7 @@ namespace Game {
 
 		private void Awake () {
 			info = new SnakeInfo {
-				maxLength = 9,
+				maxLength = 6,
 				bodyWidth = 0.6f,
 				maxValue = 1,
 				halfViewAngle = 0.75f * 3.1416f,

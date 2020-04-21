@@ -10,7 +10,7 @@ namespace Simulator {
 		public MoveInfo.Direction headDir;
 		
 		public byte flag;
-		public enum State {None=0, IsAlive=1, GotAFood=2, WasBited=4, Bited=8};
+		public enum State {None=0, IsAlive=1, GotAFood=2, WasBited=4, Bited=8, EatSelf = 16 };
 
 		public override string ToString () {
 			return $"pos: {headPos.ToString()}, dir: {headDir.ToString()}\nval: {value}, flag: {flag}";

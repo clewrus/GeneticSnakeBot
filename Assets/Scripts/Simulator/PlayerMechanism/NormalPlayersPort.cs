@@ -11,6 +11,8 @@ namespace Simulator {
 
 		public float ValuePerMove { get; set; } = 0.1f;
 
+		public System.EventHandler<PlayerDiedEventArgs> PlayerDied { get; set; }
+
 		private Dictionary<int, IPlayer> idToPlayer;
 		private Dictionary<IPlayer, int> playerToId;
 		private List<(int id, IPlayer player)> orderedIdPlayer;
@@ -61,17 +63,25 @@ namespace Simulator {
 
 		public void HandleMoveResult (List<MoveResult> results) {
 			results.ForEach((res) => {
-				idToHeadInfo[res.id] = (res.headPos, res.headDir);
+				if (idToHeadInfo.ContainsKey(res.id)) {
+					idToHeadInfo[res.id] = (res.headPos, res.headDir);
+				}
 			});
 
 			results.ForEach((res) => {
-				var curPlayer = idToPlayer[res.id];
+				if (idToPlayer.TryGetValue(res.id, out var curPlayer)) {
+					if (Scorer != null) {
+						if ((res.flag & (uint)MoveResult.State.EatSelf) == 0) {
+							Scorer.UpdateScore(curPlayer, res.eatenValue);
+						}
+					}
 
-				if (Scorer != null) {
-					Scorer.UpdateScore(curPlayer, res.eatenValue);
+					curPlayer.HandleMoveResult(res);
+
+					if ((res.flag & (uint)MoveResult.State.IsAlive) == 0) {
+						OnPlayerDied(curPlayer);
+					}
 				}
-
-				curPlayer.HandleMoveResult(res);
 			});
 		}
 
@@ -139,6 +149,15 @@ namespace Simulator {
 			}
 
 			return null;
+		}
+
+		private void OnPlayerDied (IPlayer player) {
+			RemovePlayer(playerToId[player]);
+			PlayerDied?.Invoke(this, new PlayerDiedEventArgs { player = player });
+		}
+
+		public class PlayerDiedEventArgs : System.EventArgs {
+			public IPlayer player;
 		}
 	}
 }

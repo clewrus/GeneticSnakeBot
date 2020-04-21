@@ -19,6 +19,8 @@ namespace Game {
 		#region Properties
 
 		public EventHandler<ObservedPlayerDiedEventArgs> ObservedPlayerDied { get; set; }
+		public EventHandler<Simulator.NormalPlayersPort.PlayerDiedEventArgs> NonObservedPlayerDied { get; set; }
+
 		public Visualizable.IVisualizable Simulation { get => m_Simulation; }
 		public Simulator.IScorer Scorer { get => m_Scorer; }
 
@@ -53,6 +55,10 @@ namespace Game {
 			this.m_Scorer = new Simulator.SinglePlayerScorer();
 			this.localPort = new Simulator.NormalPlayersPort() { ValuePerMove = 0f };
 
+			if (localPort is Simulator.NormalPlayersPort normalLocalPort) {
+				normalLocalPort.PlayerDied += PlayerDiedHandler;
+			}
+
 			localPort.Scorer = m_Scorer;
 			m_Simulation.AddPlayerPort(localPort);
 		}
@@ -85,8 +91,16 @@ namespace Game {
 			return false;
 		}
 
-		private void ObservationFinishedHandler (object sender, EventArgs args) {
-			OnObservedPlayerDied();
+		private void PlayerDiedHandler (object sender, Simulator.NormalPlayersPort.PlayerDiedEventArgs args) {
+			if (m_ObservedPlayer != null && args.player == m_ObservedPlayer) {
+				OnObservedPlayerDied();
+			} else {
+				OnNonObservedPlayerDied(args);
+			}
+		}
+
+		private void OnNonObservedPlayerDied (Simulator.NormalPlayersPort.PlayerDiedEventArgs args) {
+			NonObservedPlayerDied?.Invoke(this, args);
 		}
 
 		private void OnObservedPlayerDied () {
@@ -96,6 +110,7 @@ namespace Game {
 				score = (hasInfo) ? (float?)info.score : null,
 			});
 		}
+
 
 		#region Properties update methods
 
@@ -143,13 +158,10 @@ namespace Game {
 
 		private void ChangeObservingCamera (Visualization.IVisualizerObserver old, Visualization.IVisualizerObserver nw) {
 			if (old != null && m_Visualizer != null) {
-				old.ObservationFinished -= ObservationFinishedHandler;
 				m_Visualizer.RemoveObserver(old);
 			}
 
 			if (nw == null) return;
-			nw.ObservationFinished -= ObservationFinishedHandler;
-			nw.ObservationFinished += ObservationFinishedHandler;
 
 			if (m_ObservedPlayer != null && TryFindPlayerId(m_ObservedPlayer, out int id)) {
 				nw.ExpectedPlacementId = id;
