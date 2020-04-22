@@ -2,6 +2,9 @@
 {
 	Properties
 	{
+		_MainTex("Texture", 2D) = "white" {}
+		[Space]
+
 		[Toggle] _TurnRight("TurnRight", Float) = 0
 
 	   _SnakeID("SnakeID", Float) = 0
@@ -51,6 +54,9 @@
 				o.uv = v.uv;
 				return o;
 			}
+
+			sampler2D _MainTex;
+			float4 _MainTex_ST;
 
 			float _TurnRight;
 			float _SnakeID;

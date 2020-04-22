@@ -2,6 +2,8 @@
 {
 	Properties
 	{
+		_MainTex("Texture", 2D) = "white" {}
+		[Space]
 		_SnakeID("SnakeID", Float) = 0
 		_TailN("Index from tail", Float) = 0
 		_HeadN("Index from head", Float) = 0
@@ -54,6 +56,9 @@
 			}
 			
 			#include "SnakeCommon.cginc"
+
+			sampler2D _MainTex;
+			float4 _MainTex_ST;
 
 			float _SnakeID;
 

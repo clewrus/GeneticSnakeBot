@@ -17,7 +17,9 @@ namespace Game {
 		[SerializeField] private GameObject standartGameInterfase = null;
 		[SerializeField] private GameObject arenaGameInterfase = null;
 		[SerializeField] private GameObject scoreLable = null;
+		[SerializeField] private GameObject maxScoreLable = null;
 		[Space]
+		[SerializeField] private SnakeLookupManager snakeLookupManager = null;
 		[SerializeField] private Visualization.Visualizer visualizer = null;
 
 		[Space]
@@ -35,6 +37,7 @@ namespace Game {
 		private void Start () {
 			SetCameraComponentState(gameCamera, enabled: true);
 
+			UpdateMaxScoreLable();
 			TurnOffAllMenues();
 
 			menuCanvas?.SetActive(true);
@@ -124,10 +127,18 @@ namespace Game {
 		}
 
 		private void OnCountdownEnded () {
+			int curMaxScore = PlayerPrefs.GetInt("MaxScore", 0);
+			if (currentSimulation.TryGetObservedPlayerScoreInfo(out var info) && curMaxScore < info.score) {
+				PlayerPrefs.SetInt("MaxScore", Mathf.FloorToInt(info.score));
+				PlayerPrefs.Save();
+				UpdateMaxScoreLable();
+			}
+
 			TurnOnEndOfGameMenu();
 		}
 
 		private void InitializeSimulation (SimulatorAdapter simulation) {
+			PlayerPrefs.Save();
 			simulation.Visualizer = visualizer;
 
 			var observingCamera = gameCamera.GetComponent<Visualization.IVisualizerObserver>();
@@ -137,6 +148,12 @@ namespace Game {
 			simulation.ObservingCamera = observingCamera;
 
 			var validPlayer = SelectValidPlayer();
+			var curInfo = validPlayer.GetSnakeInfo();
+			if (snakeLookupManager != null) {
+				curInfo.maxLength = snakeLookupManager.SnakeLength;
+				curInfo.scuamaPatern = snakeLookupManager.ScuamaPatern;
+			}
+
 			if (validPlayer is IHumanPlayer humanPlayer) {
 				humanPlayer.DirectionSelected += DirectionSelectedHandler;
 			}
@@ -195,8 +212,6 @@ namespace Game {
 					humanPlayer.DirectionSelected -= DirectionSelectedHandler;
 				}
 
-
-
 				currentSimulation.Visualizer = null;
 				currentSimulation.ObservedPlayer = null;
 				currentSimulation.ObservingCamera = null;
@@ -244,7 +259,6 @@ namespace Game {
 				arenaGameInterfase?.SetActive(true);
 				pauseMenu?.SetActive(true);
 			}
-			
 		}
 
 		private void DirectionSelectedHandler (object sender, System.EventArgs eventArgs) {
@@ -276,6 +290,14 @@ namespace Game {
 
 			if (cameraComponent == null) return;
 			cameraComponent.enabled = enabled;
+		}
+
+		private void UpdateMaxScoreLable () {
+			if (maxScoreLable == null) return;
+			var tmpro = maxScoreLable.GetComponent<TMPro.TextMeshProUGUI>();
+
+			if (tmpro == null) return;
+			tmpro.text = $"Max Score: {PlayerPrefs.GetInt("MaxScore", 0)}";
 		}
 	}
 }

@@ -41,7 +41,7 @@
 				return o;
 			}
 
-			#include "Noise3D.cginc"
+			#include "SnakeTiles/Noise3D.cginc"
 
 			float _MaxR;
 			float _FluctuationRate;
@@ -77,6 +77,7 @@
 
 				col.rgb *= (1 / max(0.1, R)) - (1 / borderR) * (0.9 + 0.1*waveValue);
 				col *= smoothstep(borderR + 0.02, borderR, R);
+				clip(col.a - 0.0001);
 
 				return col;
 			}
