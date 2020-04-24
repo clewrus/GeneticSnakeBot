@@ -70,11 +70,11 @@
 
 				pauseMask *=  S(_R - _Smooth, _R, r) + vertLinesMask;
 
-				fixed4 col = _Color * pauseMask;
+				fixed4 col = pauseMask;
 
 				col += fixed4(0.3, 1, 0.3, 1) * min(0.5, max(0, (0.5 / r) * (1.5 - r)));
 
-				return col;
+				return _Color * col;
 			}
 			ENDCG
 		}

@@ -13,7 +13,7 @@ namespace Game {
 		public EventHandler DirectionSelected { get; set; }
 		public bool NeedsProjection => false;
 
-		[SerializeField] private SmartphoneControllerManager screenButtonsManager;
+		[SerializeField] private SmartphoneControllerManager screenButtonsManager = null;
 
 		private void Awake () {
 			info = new SnakeInfo {
